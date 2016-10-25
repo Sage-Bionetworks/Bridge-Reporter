@@ -1,7 +1,9 @@
-# Bridge Exporter (Bridge-EX)
+# Bridge Reporter
 Worker app to get all uploads for each study and generate aggregation reports every day and every week
 
 Set-up:
+In your home directory, add a file BridgeReporter.conf and add
+* any other local overrides
 
 To run a full build (including compile, unit tests, findbugs, and jacoco test coverage), run:
 mvn verify
