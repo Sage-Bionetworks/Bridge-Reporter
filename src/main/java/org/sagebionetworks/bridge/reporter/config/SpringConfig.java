@@ -68,11 +68,6 @@ public class SpringConfig {
     }
 
     @Bean
-    public FileHelper fileHelper() {
-        return new FileHelper();
-    }
-
-    @Bean
     public HeartbeatLogger heartbeatLogger() {
         HeartbeatLogger heartbeatLogger = new HeartbeatLogger();
         heartbeatLogger.setIntervalMinutes(bridgeConfig().getInt("heartbeat.interval.minutes"));
@@ -97,10 +92,5 @@ public class SpringConfig {
         sqsWorker.setSleepTimeMillis(config.getInt("reporter.request.sqs.sleep.time.millis"));
         sqsWorker.setSqsHelper(sqsHelper());
         return sqsWorker;
-    }
-
-    @Bean(name = "workerExecutorService")
-    public ExecutorService workerExecutorService() {
-        return Executors.newFixedThreadPool(bridgeConfig().getInt("threadpool.worker.count"));
     }
 }

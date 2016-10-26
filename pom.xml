@@ -28,21 +28,6 @@
     <dependencies>
         <dependency>
             <groupId>com.amazonaws</groupId>
-            <artifactId>aws-java-sdk-dynamodb</artifactId>
-            <version>${aws.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.amazonaws</groupId>
-            <artifactId>aws-java-sdk-s3</artifactId>
-            <version>${aws.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.amazonaws</groupId>
-            <artifactId>aws-java-sdk-ses</artifactId>
-            <version>${aws.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.amazonaws</groupId>
             <artifactId>aws-java-sdk-sqs</artifactId>
             <version>${aws.version}</version>
         </dependency>
@@ -65,16 +50,6 @@
             <groupId>com.jcabi</groupId>
             <artifactId>jcabi-aspects</artifactId>
             <version>0.22.1</version>
-        </dependency>
-        <dependency>
-            <groupId>com.stormpath.sdk</groupId>
-            <artifactId>stormpath-sdk-api</artifactId>
-            <version>${stormpath.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.stormpath.sdk</groupId>
-            <artifactId>stormpath-sdk-httpclient</artifactId>
-            <version>${stormpath.version}</version>
         </dependency>
         <dependency>
             <groupId>joda-time</groupId>
@@ -203,11 +178,8 @@
                 <version>0.7.5.201505241946</version>
                 <configuration>
                     <excludes>
-                        <!-- org.sagebionetworks.bridge.reporter.config is inherently not testable -->
-                        <exclude>org/sagebionetworks/bridge/udd/org.sagebionetworks.bridge.reporter.config/*</exclude>
-
-                        <!-- no point in testing exceptions, since they are entirely boilerplate code -->
-                        <exclude>org/sagebionetworks/bridge/udd/exceptions/*</exclude>
+                        <exclude>org/sagebionetworks/bridge/reporter/config/*</exclude>
+                        <exclude>org/sagebionetworks/bridge/reporter/exceptions/*</exclude>
                     </excludes>
                     <rules>
                         <rule>
