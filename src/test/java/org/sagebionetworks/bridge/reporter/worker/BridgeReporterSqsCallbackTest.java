@@ -29,6 +29,7 @@ public class BridgeReporterSqsCallbackTest {
     }
 
     private static final String TEST_STUDY_ID = "api";
+    private static final String TEST_STUDY_ID_2 = "parkinson";
     private static final String TEST_REPORT_ID = "test-scheduler-daily-upload-report";
     private static final String TEST_REPORT_ID_WEEKLY = "test-scheduler-weekly-upload-report";
     private static final String TEST_SCHEDULER = "test-scheduler";
@@ -43,13 +44,28 @@ public class BridgeReporterSqsCallbackTest {
     }
     private static final ReportData TEST_REPORT = new ReportData(TEST_START_DATETIME.toLocalDate(), TEST_REPORT_DATA);
 
+    private static final ObjectNode TEST_REPORT_DATA_2 = JsonNodeFactory.instance.objectNode();
+    static {
+        TEST_REPORT_DATA_2.put("SUCCEEDED", 2);
+        TEST_REPORT_DATA_2.put("REQUESTED", 1);
+    }
+    private static final ReportData TEST_REPORT_2 = new ReportData(TEST_START_DATETIME.toLocalDate(), TEST_REPORT_DATA_2);
+
+
     private static final StudySummary TEST_STUDY_SUMMARY;
+    private static final StudySummary TEST_STUDY_SUMMARY_2;
     static {
         TEST_STUDY_SUMMARY = new StudySummary();
         TEST_STUDY_SUMMARY.setIdentifier(TEST_STUDY_ID);
         TEST_STUDY_SUMMARY.setName(TEST_STUDY_ID);
+
+        TEST_STUDY_SUMMARY_2 = new StudySummary();
+        TEST_STUDY_SUMMARY_2.setIdentifier(TEST_STUDY_ID_2);
+        TEST_STUDY_SUMMARY_2.setName(TEST_STUDY_ID_2);
     }
     private static final ResourceList<StudySummary> TEST_STUDY_SUMMARY_LIST = new ResourceList<>(Arrays.asList(TEST_STUDY_SUMMARY), 1);
+    private static final ResourceList<StudySummary> TEST_STUDY_SUMMARY_LIST_2 = new ResourceList<>(Arrays.asList(TEST_STUDY_SUMMARY, TEST_STUDY_SUMMARY_2), 2);
+
 
     // test request
     private static final String UPLOAD_TEXT = Tests.unescapeJson("{'contentLength':10000,"+
@@ -57,6 +73,19 @@ public class BridgeReporterSqsCallbackTest {
             "'completedOn':'2016-07-26T22:43:10.468Z','completedBy':'s3_worker',"+
             "'uploadDate':'2016-10-10','uploadId':'DEF','validationMessageList':"+
             "['message 1','message 2'],'schemaId':'schemaId','schemaRevision':2,'type':'Upload'}");
+
+    private static final String UPLOAD_TEXT_2 = Tests.unescapeJson("{'contentLength':10000,"+
+            "'status':'succeeded','requestedOn':'2016-07-26T22:43:10.392Z',"+
+            "'completedOn':'2016-07-26T22:43:10.468Z','completedBy':'s3_worker',"+
+            "'uploadDate':'2016-10-10','uploadId':'DEF','validationMessageList':"+
+            "['message 1','message 2'],'schemaId':'schemaId','schemaRevision':2,'type':'Upload'}");
+
+    private static final String UPLOAD_TEXT_3 = Tests.unescapeJson("{'contentLength':10000,"+
+            "'status':'requested','requestedOn':'2016-07-26T22:43:10.392Z',"+
+            "'completedOn':'2016-07-26T22:43:10.468Z','completedBy':'s3_worker',"+
+            "'uploadDate':'2016-10-10','uploadId':'DEF','validationMessageList':"+
+            "['message 1','message 2'],'schemaId':'schemaId','schemaRevision':2,'type':'Upload'}");
+
 
     private static final String REQUEST_JSON_TEXT = "{\n" +
             "   \"scheduler\":\"" + TEST_SCHEDULER +"\",\n" +
@@ -81,6 +110,11 @@ public class BridgeReporterSqsCallbackTest {
 
     private final Upload TEST_UPLOAD = BridgeUtils.getMapper().readValue(UPLOAD_TEXT, Upload.class);
     private final ResourceList<Upload> TEST_UPLOADS = new ResourceList<>(Arrays.asList(TEST_UPLOAD), 1);
+
+    private final Upload TEST_UPLOAD_2 = BridgeUtils.getMapper().readValue(UPLOAD_TEXT_2, Upload.class);
+    private final Upload TEST_UPLOAD_3 = BridgeUtils.getMapper().readValue(UPLOAD_TEXT_3, Upload.class);
+    private final ResourceList<Upload> TEST_UPLOADS_2 = new ResourceList<>(Arrays.asList(TEST_UPLOAD, TEST_UPLOAD_2, TEST_UPLOAD_3), 3);
+
 
     private BridgeHelper mockBridgeHelper;
     private BridgeReporterSqsCallback callback;
@@ -116,6 +150,46 @@ public class BridgeReporterSqsCallbackTest {
         verify(mockBridgeHelper).getAllStudiesSummary();
         verify(mockBridgeHelper).getUploadsForStudy(eq(TEST_STUDY_ID), eq(TEST_START_DATETIME), eq(TEST_END_DATETIME));
         verify(mockBridgeHelper).saveReportForStudy(eq(TEST_STUDY_ID), eq(TEST_REPORT_ID_WEEKLY), eq(TEST_REPORT));
+    }
+
+    @Test
+    public void testMultipleStudies() throws Exception {
+        mockBridgeHelper = mock(BridgeHelper.class);
+        when(mockBridgeHelper.getAllStudiesSummary()).thenReturn(TEST_STUDY_SUMMARY_LIST_2);
+        when(mockBridgeHelper.getUploadsForStudy(any(), any(), any())).thenReturn(TEST_UPLOADS);
+
+        // set up callback
+        callback = new BridgeReporterSqsCallback();
+        callback.setBridgeHelper(mockBridgeHelper);
+
+        // execute
+        callback.callback(REQUEST_JSON_TEXT);
+
+        // verify
+        verify(mockBridgeHelper).getAllStudiesSummary();
+        verify(mockBridgeHelper).getUploadsForStudy(eq(TEST_STUDY_ID), eq(TEST_START_DATETIME), eq(TEST_END_DATETIME));
+        verify(mockBridgeHelper).getUploadsForStudy(eq(TEST_STUDY_ID_2), eq(TEST_START_DATETIME), eq(TEST_END_DATETIME));
+        verify(mockBridgeHelper).saveReportForStudy(eq(TEST_STUDY_ID), eq(TEST_REPORT_ID), eq(TEST_REPORT));
+    }
+
+    @Test
+    public void testMultipleuploads() throws Exception {
+        mockBridgeHelper = mock(BridgeHelper.class);
+        when(mockBridgeHelper.getAllStudiesSummary()).thenReturn(TEST_STUDY_SUMMARY_LIST);
+        when(mockBridgeHelper.getUploadsForStudy(any(), any(), any())).thenReturn(TEST_UPLOADS_2);
+
+        // set up callback
+        callback = new BridgeReporterSqsCallback();
+        callback.setBridgeHelper(mockBridgeHelper);
+
+
+        // execute
+        callback.callback(REQUEST_JSON_TEXT);
+
+        // verify
+        verify(mockBridgeHelper).getAllStudiesSummary();
+        verify(mockBridgeHelper).getUploadsForStudy(eq(TEST_STUDY_ID), eq(TEST_START_DATETIME), eq(TEST_END_DATETIME));
+        verify(mockBridgeHelper).saveReportForStudy(eq(TEST_STUDY_ID), eq(TEST_REPORT_ID), eq(TEST_REPORT_2));
     }
 
     @Test(expectedExceptions = PollSqsWorkerBadRequestException.class)

@@ -34,6 +34,21 @@ public class BridgeReporterSqsCallback implements PollSqsCallback {
 
     private BridgeHelper bridgeHelper;
 
+    public enum REPORT_SUFFIX {
+        DAILY_SUFFIX("-daily-upload-report"),
+        WEEKLY_SUFFIX("-weekly-upload-report");
+
+        private final String suffix;
+
+        REPORT_SUFFIX(String s) {
+            this.suffix = s;
+        }
+
+        public String getSuffix() {
+            return this.suffix;
+        }
+    }
+
     @Autowired
     public final void setBridgeHelper(BridgeHelper bridgeHelper) {
         this.bridgeHelper = bridgeHelper;
@@ -56,9 +71,9 @@ public class BridgeReporterSqsCallback implements PollSqsCallback {
 
         String reportId;
         if (scheduleType == BridgeReporterRequest.ReportScheduleType.DAILY) {
-            reportId = scheduler + "-daily-upload-report";
+            reportId = scheduler + REPORT_SUFFIX.DAILY_SUFFIX.getSuffix();
         } else if (scheduleType == BridgeReporterRequest.ReportScheduleType.WEEKLY) {
-            reportId = scheduler + "-weekly-upload-report";
+            reportId = scheduler + REPORT_SUFFIX.WEEKLY_SUFFIX.getSuffix();
         } else {
             throw new PollSqsWorkerBadRequestException("Invalid report schedule type: " + scheduleType.toString());
         }
@@ -66,9 +81,9 @@ public class BridgeReporterSqsCallback implements PollSqsCallback {
         LOG.info("Received request for hash[scheduler]=" + scheduler + ", scheduleType=" + scheduleType + ", startDate=" +
                 startDateTime + ",endDate=" + endDateTime);
 
-        ResourceList<StudySummary> allStudiesSummary = bridgeHelper.getAllStudiesSummary();
-
         Stopwatch requestStopwatch = Stopwatch.createStarted();
+
+        ResourceList<StudySummary> allStudiesSummary = bridgeHelper.getAllStudiesSummary();
 
         // main block to generate and save reports
         try {
