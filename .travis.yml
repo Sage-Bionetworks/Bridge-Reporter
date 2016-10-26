@@ -1,0 +1,22 @@
+language: java
+jdk:
+- oraclejdk8
+sudo: false
+before_deploy: mvn clean verify
+deploy:
+  skip_cleanup: true
+  provider: elasticbeanstalk
+  access_key_id:
+    secure: "i8+XIjSIaIq9SLkUBZTBZEd3kEGxr8ymd8qdRWCGQciXZY77aK0oTLwRXwEZs8MwMaRQYsmIqyI/lThLGl8ikc2dWxu+D61O7h6IEiRci8o5lluxn+OmQtxjtLax3QJvnqN22yGCAEQuoIBEV+mKlzHpqZB7zNJsQ+rhou6Bx4Xga6qWUggUHgSKnDNJN//pHqtTFP8Rai6DRFtHXoWVWBu7XB+oNmCAXMxqlztxS0DtOsYMBYv1BC3YU7a8MZXCl3CVoMPg/ReJUIyvDU0BeldQdyzG91Za48HXdAL0H3M0MjoPcbXPkm0QsBYlbE/iNYG5UCo7ugsZGkCdxZJy0BkkcEeFq7GaMhaW9k7N2Ld7E1ONM3+zR/T5/gVRtUoc07VzqlcfnTQl1WykNqmrxBdljAcBXUozbOHPmyqKVTYxKlJnA3NI9M1tbhHAavGaXx+tkl3cC6/1HhP7wL9kXagMty5oHZStCRtfcyc7bCfRvPclabFpuMxfL8V1+0oRXov2LhERzicnj2s/5BKFOSpfuruVXqxZMBGQHGVXb7Waf1kbW9s5rzdci72fQiSyycSM+XZVUujm5RvEa4niDxSBBcu/aMpE0b8YE/+r+OXm88OeAV2Dx1fkCCRn1/zKMDdGDAdwL3LLNEZDzvFw6QW+dqQhgtjVLRGhFCx3JmM="
+  secret_access_key:
+    secure: "ES9CvVv3pcSTrZ9IsmddyjQv0QJoDCmqbpbtupA9GKjSDwEylmvw8TzBpTG54RCA8BhyXeCZuXTEfk0Qj/dXM1UpW62t96HkWg6bqRwX6AkfHpClcj1vsX9Q6QUwQWTdd3D5et95JAGiHp1Agi2yKSSFtvsM/YPra47UCRXQjYBF1mVKR6UuJo8vn175wCXket4ohHntyppdn3u2/tNEQXjSiHRcIbRNf06BXDK8tjTIqEgT0ppNjVJULHGlM5mIaJ+CQR98/lmtBy4kWZeqqz2k8/pV/YZuSrPN4nnBuKyExU9i5LqZT7k4+d18dOdOHgLRM4e+igcm+f7oASZ2JACYr88CNvNii3Ag5ET9zB4bgk+YJIQQlAEooIrepP0aml+0RcNegVkVNuLd/jho189HLuxmsLk5ObuEWcgassBq6uWGrHqQFucarBlURkSqLwJONR8YE4e0MYQrLjr2hQXU+Z6bGYN3dhATBdvnMd/AVixn8eL9xytnhlY/ayOdjqZD9N7kHOiQ0Bdytog/+e7UGlillWbIW+HQBGtdLWqFSw24raLvbqFbJjtSUeD1THL0uDva8S8G+K4xX9FON28wnPme0Yjpt0wvLnqd75cxhxVvp4Q0QX0+n1tkXahcgU9leQuuRTYzXB/JTdRGpidgRGOg/ZOzujngScC2+3k="
+  region: us-east-1
+  app: Bridge-Reporter
+  env:
+    develop: Bridge-Reporter-Dev
+    uat: Bridge-Reporter-Uat
+    prod: Bridge-Reporter-Prod
+  bucket_name: elasticbeanstalk-us-east-1-649232250620
+  zip-file: target/Bridge-Reporter-1.0.war
+  on:
+    all_branches: true
