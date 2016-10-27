@@ -2,7 +2,7 @@ language: java
 jdk:
 - oraclejdk8
 sudo: false
-before_deploy: mvn clean verify
+before_deploy: mvn clean deploy
 deploy:
   skip_cleanup: true
   provider: elasticbeanstalk

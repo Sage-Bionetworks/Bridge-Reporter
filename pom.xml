@@ -215,4 +215,12 @@
             </plugin>
         </plugins>
     </build>
+
+    <distributionManagement>
+        <repository>
+            <id>org-sagebridge-repo-maven-releases</id>
+            <name>org-sagebridge-repo-maven-releases</name>
+            <url>s3://org-sagebridge-repo-maven-releases</url>
+        </repository>
+    </distributionManagement>
 </project>

@@ -1,5 +1,6 @@
 package org.sagebionetworks.bridge.reporter.worker;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
@@ -11,6 +12,7 @@ import org.sagebionetworks.bridge.json.DateTimeToStringSerializer;
 /** Represents a request to the Bridge Reporting Service. */
 @JsonDeserialize(builder = BridgeReporterRequest.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown=true)
 public class BridgeReporterRequest {
     public enum ReportScheduleType {
         DAILY,
@@ -50,6 +52,7 @@ public class BridgeReporterRequest {
     /*
     Bridge-Reporter request builder
      */
+    @JsonIgnoreProperties(ignoreUnknown=true)
     public static class Builder {
         private DateTime startDateTime;
         private DateTime endDateTime;
