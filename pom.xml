@@ -7,7 +7,7 @@
     <groupId>org.sagebionetworks</groupId>
     <artifactId>Bridge-Reporter</artifactId>
     <version>1.0</version>
-    <packaging>war</packaging>
+    <packaging>jar</packaging>
 
     <properties>
         <aws.version>1.10.56</aws.version>
@@ -26,16 +26,6 @@
     </parent>
 
     <dependencies>
-        <dependency>
-            <groupId>com.amazonaws</groupId>
-            <artifactId>aws-java-sdk-s3</artifactId>
-            <version>${aws.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.amazonaws</groupId>
-            <artifactId>aws-java-sdk-sqs</artifactId>
-            <version>${aws.version}</version>
-        </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
@@ -75,11 +65,6 @@
             <groupId>org.sagebionetworks.bridge</groupId>
             <artifactId>java-sdk</artifactId>
             <version>0.11.6</version>
-        </dependency>
-        <dependency>
-            <groupId>org.sagebionetworks</groupId>
-            <artifactId>synapseJavaClient</artifactId>
-            <version>131.0</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

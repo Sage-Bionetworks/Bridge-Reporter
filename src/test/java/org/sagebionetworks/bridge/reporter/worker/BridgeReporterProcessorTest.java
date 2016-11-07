@@ -1,10 +1,13 @@
 package org.sagebionetworks.bridge.reporter.worker;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.joda.time.DateTime;
+import org.sagebionetworks.bridge.json.DefaultObjectMapper;
 import org.sagebionetworks.bridge.reporter.Tests;
 import org.sagebionetworks.bridge.reporter.helper.BridgeHelper;
+import org.sagebionetworks.bridge.reporter.request.ReportScheduleName;
 import org.sagebionetworks.bridge.sdk.models.ResourceList;
 import org.sagebionetworks.bridge.sdk.models.reports.ReportData;
 import org.sagebionetworks.bridge.sdk.models.studies.StudySummary;
@@ -24,8 +27,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 
-public class BridgeReporterSqsCallbackTest {
-    public BridgeReporterSqsCallbackTest() throws IOException {
+public class BridgeReporterProcessorTest {
+    public BridgeReporterProcessorTest() throws IOException {
     }
 
     private static final String TEST_STUDY_ID = "api";
@@ -33,8 +36,8 @@ public class BridgeReporterSqsCallbackTest {
     private static final String TEST_REPORT_ID = "test-scheduler-daily-upload-report";
     private static final String TEST_REPORT_ID_WEEKLY = "test-scheduler-weekly-upload-report";
     private static final String TEST_SCHEDULER = "test-scheduler";
-    private static final BridgeReporterRequest.ReportScheduleType TEST_SCHEDULE_TYPE = BridgeReporterRequest.ReportScheduleType.DAILY;
-    private static final BridgeReporterRequest.ReportScheduleType TEST_SCHEDULE_TYPE_WEEKLY = BridgeReporterRequest.ReportScheduleType.WEEKLY;
+    private static final ReportScheduleName TEST_SCHEDULE_TYPE = ReportScheduleName.DAILY;
+    private static final ReportScheduleName TEST_SCHEDULE_TYPE_WEEKLY = ReportScheduleName.WEEKLY;
     private static final DateTime TEST_START_DATETIME = DateTime.parse("2016-10-19T00:00:00Z");
     private static final DateTime TEST_END_DATETIME = DateTime.parse("2016-10-20T23:59:59Z");
 
@@ -94,6 +97,8 @@ public class BridgeReporterSqsCallbackTest {
             "   \"endDateTime\":\"2016-10-20T23:59:59Z\"\n" +
             "}";
 
+    private final JsonNode REQUEST_JSON = DefaultObjectMapper.INSTANCE.readValue(REQUEST_JSON_TEXT, JsonNode.class);
+
     private static final String REQUEST_JSON_TEXT_WEEKLY = "{\n" +
             "   \"scheduler\":\"" + TEST_SCHEDULER +"\",\n" +
             "   \"scheduleType\":\"" + TEST_SCHEDULE_TYPE_WEEKLY.toString() + "\",\n" +
@@ -101,12 +106,18 @@ public class BridgeReporterSqsCallbackTest {
             "   \"endDateTime\":\"2016-10-20T23:59:59Z\"\n" +
             "}";
 
+    private final JsonNode REQUEST_JSON_WEEKLY = DefaultObjectMapper.INSTANCE.readValue(REQUEST_JSON_TEXT_WEEKLY, JsonNode.class);
+
+
     private static final String REQUEST_JSON_TEXT_INVALID = "{\n" +
             "   \"scheduler\":\"" + TEST_SCHEDULER +"\",\n" +
             "   \"scheduleType\":\"Invalid_Schedule_Type\",\n" +
             "   \"startDateTime\":\"2016-10-19T00:00:00Z\",\n" +
             "   \"endDateTime\":\"2016-10-20T23:59:59Z\"\n" +
             "}";
+
+    private final JsonNode REQUEST_JSON_INVALID = DefaultObjectMapper.INSTANCE.readValue(REQUEST_JSON_TEXT_INVALID, JsonNode.class);
+
 
     private final Upload TEST_UPLOAD = BridgeUtils.getMapper().readValue(UPLOAD_TEXT, Upload.class);
     private final ResourceList<Upload> TEST_UPLOADS = new ResourceList<>(Arrays.asList(TEST_UPLOAD), 1);
@@ -117,7 +128,7 @@ public class BridgeReporterSqsCallbackTest {
 
 
     private BridgeHelper mockBridgeHelper;
-    private BridgeReporterSqsCallback callback;
+    private BridgeReporterProcessor processor;
 
     @BeforeMethod
     public void setup() throws Exception {
@@ -126,14 +137,14 @@ public class BridgeReporterSqsCallbackTest {
         when(mockBridgeHelper.getUploadsForStudy(any(), any(), any())).thenReturn(TEST_UPLOADS);
 
         // set up callback
-        callback = new BridgeReporterSqsCallback();
-        callback.setBridgeHelper(mockBridgeHelper);
+        processor = new BridgeReporterProcessor();
+        processor.setBridgeHelper(mockBridgeHelper);
     }
 
     @Test
     public void testNormalCase() throws Exception {
         // execute
-        callback.callback(REQUEST_JSON_TEXT);
+        processor.process(REQUEST_JSON);
 
         // verify
         verify(mockBridgeHelper).getAllStudiesSummary();
@@ -144,7 +155,7 @@ public class BridgeReporterSqsCallbackTest {
     @Test
     public void testNormalCaseWeekly() throws Exception {
         // execute
-        callback.callback(REQUEST_JSON_TEXT_WEEKLY);
+        processor.process(REQUEST_JSON_WEEKLY);
 
         // verify
         verify(mockBridgeHelper).getAllStudiesSummary();
@@ -159,17 +170,18 @@ public class BridgeReporterSqsCallbackTest {
         when(mockBridgeHelper.getUploadsForStudy(any(), any(), any())).thenReturn(TEST_UPLOADS);
 
         // set up callback
-        callback = new BridgeReporterSqsCallback();
-        callback.setBridgeHelper(mockBridgeHelper);
+        processor = new BridgeReporterProcessor();
+        processor.setBridgeHelper(mockBridgeHelper);
 
         // execute
-        callback.callback(REQUEST_JSON_TEXT);
+        processor.process(REQUEST_JSON);
 
         // verify
         verify(mockBridgeHelper).getAllStudiesSummary();
         verify(mockBridgeHelper).getUploadsForStudy(eq(TEST_STUDY_ID), eq(TEST_START_DATETIME), eq(TEST_END_DATETIME));
         verify(mockBridgeHelper).getUploadsForStudy(eq(TEST_STUDY_ID_2), eq(TEST_START_DATETIME), eq(TEST_END_DATETIME));
         verify(mockBridgeHelper).saveReportForStudy(eq(TEST_STUDY_ID), eq(TEST_REPORT_ID), eq(TEST_REPORT));
+        verify(mockBridgeHelper).saveReportForStudy(eq(TEST_STUDY_ID_2), eq(TEST_REPORT_ID), eq(TEST_REPORT));
     }
 
     @Test
@@ -179,12 +191,12 @@ public class BridgeReporterSqsCallbackTest {
         when(mockBridgeHelper.getUploadsForStudy(any(), any(), any())).thenReturn(TEST_UPLOADS_2);
 
         // set up callback
-        callback = new BridgeReporterSqsCallback();
-        callback.setBridgeHelper(mockBridgeHelper);
+        processor = new BridgeReporterProcessor();
+        processor.setBridgeHelper(mockBridgeHelper);
 
 
         // execute
-        callback.callback(REQUEST_JSON_TEXT);
+        processor.process(REQUEST_JSON);
 
         // verify
         verify(mockBridgeHelper).getAllStudiesSummary();
@@ -195,11 +207,6 @@ public class BridgeReporterSqsCallbackTest {
     @Test(expectedExceptions = PollSqsWorkerBadRequestException.class)
     public void testInvalidScheduleType() throws Exception {
         // execute
-        callback.callback(REQUEST_JSON_TEXT_INVALID);
-    }
-
-    @Test(expectedExceptions = PollSqsWorkerBadRequestException.class)
-    public void malformedRequest() throws Exception {
-        callback.callback("not json");
+        processor.process(REQUEST_JSON_INVALID);
     }
 }

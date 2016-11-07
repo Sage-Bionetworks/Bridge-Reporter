@@ -1,5 +1,6 @@
 package org.sagebionetworks.bridge.reporter.worker;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Stopwatch;
@@ -7,11 +8,11 @@ import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
 import org.sagebionetworks.bridge.json.DefaultObjectMapper;
 import org.sagebionetworks.bridge.reporter.helper.BridgeHelper;
+import org.sagebionetworks.bridge.reporter.request.ReportScheduleName;
 import org.sagebionetworks.bridge.sdk.models.ResourceList;
 import org.sagebionetworks.bridge.sdk.models.reports.ReportData;
 import org.sagebionetworks.bridge.sdk.models.studies.StudySummary;
 import org.sagebionetworks.bridge.sdk.models.upload.Upload;
-import org.sagebionetworks.bridge.sqs.PollSqsCallback;
 import org.sagebionetworks.bridge.sqs.PollSqsWorkerBadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,42 +25,25 @@ import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.counting;
 
-
 /**
  * SQS callback. Called by the PollSqsWorker. This handles a reporting request.
  */
 @Component
-public class BridgeReporterSqsCallback implements PollSqsCallback {
-    private static final Logger LOG = LoggerFactory.getLogger(BridgeReporterSqsCallback.class);
+public class BridgeReporterProcessor {
+    private static final Logger LOG = LoggerFactory.getLogger(BridgeReporterProcessor.class);
 
     private BridgeHelper bridgeHelper;
-
-    public enum REPORT_SUFFIX {
-        DAILY_SUFFIX("-daily-upload-report"),
-        WEEKLY_SUFFIX("-weekly-upload-report");
-
-        private final String suffix;
-
-        REPORT_SUFFIX(String s) {
-            this.suffix = s;
-        }
-
-        public String getSuffix() {
-            return this.suffix;
-        }
-    }
 
     @Autowired
     public final void setBridgeHelper(BridgeHelper bridgeHelper) {
         this.bridgeHelper = bridgeHelper;
     }
 
-    /** Parses the SQS message. */
-    @Override
-    public void callback(String messageBody) throws IOException, PollSqsWorkerBadRequestException {
+    /** Process the passed sqs msg as JsonNode. */
+    public void process(JsonNode body) throws Exception{
         BridgeReporterRequest request;
         try {
-            request = DefaultObjectMapper.INSTANCE.readValue(messageBody, BridgeReporterRequest.class);
+            request = DefaultObjectMapper.INSTANCE.treeToValue(body, BridgeReporterRequest.class);
         } catch (IOException ex) {
             throw new PollSqsWorkerBadRequestException("Error parsing request: " + ex.getMessage(), ex);
         }
@@ -67,16 +51,9 @@ public class BridgeReporterSqsCallback implements PollSqsCallback {
         DateTime startDateTime = request.getStartDateTime();
         DateTime endDateTime = request.getEndDateTime();
         String scheduler = request.getScheduler();
-        BridgeReporterRequest.ReportScheduleType scheduleType = request.getScheduleType();
+        ReportScheduleName scheduleType = request.getScheduleType();
 
-        String reportId;
-        if (scheduleType == BridgeReporterRequest.ReportScheduleType.DAILY) {
-            reportId = scheduler + REPORT_SUFFIX.DAILY_SUFFIX.getSuffix();
-        } else if (scheduleType == BridgeReporterRequest.ReportScheduleType.WEEKLY) {
-            reportId = scheduler + REPORT_SUFFIX.WEEKLY_SUFFIX.getSuffix();
-        } else {
-            throw new PollSqsWorkerBadRequestException("Invalid report schedule type: " + scheduleType.toString());
-        }
+        String reportId = scheduler + scheduleType.getSuffix();;
 
         LOG.info("Received request for hash[scheduler]=" + scheduler + ", scheduleType=" + scheduleType + ", startDate=" +
                 startDateTime + ",endDate=" + endDateTime);
