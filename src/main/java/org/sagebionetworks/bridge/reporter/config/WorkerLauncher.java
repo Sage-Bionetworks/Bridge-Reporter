@@ -42,12 +42,12 @@ public class WorkerLauncher implements CommandLineRunner {
      */
     @Override
     public void run(String... args) {
-        LOG.info("Starting heartbeat...");
+        LOG.info("Reporter Starting heartbeat...");
         new Thread(heartbeatLogger).start();
 
-        LOG.info("Starting poll SQS workers...");
+        LOG.info("Reporter Starting poll SQS workers...");
         for (PollSqsWorker pollSqsWorker : pollSqsWorkers) {
-            LOG.info("Starting poll SQS worker");
+            LOG.info("Reporter Starting poll SQS worker");
             new Thread(pollSqsWorker).start();
         }
     }

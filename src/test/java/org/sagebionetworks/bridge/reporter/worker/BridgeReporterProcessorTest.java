@@ -23,6 +23,7 @@ import java.util.Arrays;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -40,12 +41,17 @@ public class BridgeReporterProcessorTest {
     private static final ReportScheduleName TEST_SCHEDULE_TYPE_WEEKLY = ReportScheduleName.WEEKLY;
     private static final DateTime TEST_START_DATETIME = DateTime.parse("2016-10-19T00:00:00Z");
     private static final DateTime TEST_END_DATETIME = DateTime.parse("2016-10-20T23:59:59Z");
+    private static final DateTime TEST_END_DATETIME_WEEKLY = DateTime.parse("2016-10-25T23:59:59.999Z");
 
     private static final ObjectNode TEST_REPORT_DATA = JsonNodeFactory.instance.objectNode();
+    private static final ObjectNode TEST_REPORT_DATA_WEEKLY = JsonNodeFactory.instance.objectNode();
     static {
         TEST_REPORT_DATA.put("SUCCEEDED", 1);
+        TEST_REPORT_DATA_WEEKLY.put("SUCCEEDED", 7);
     }
     private static final ReportData TEST_REPORT = new ReportData(TEST_START_DATETIME.toLocalDate(), TEST_REPORT_DATA);
+    private static final ReportData TEST_REPORT_WEEKLY = new ReportData(TEST_START_DATETIME.toLocalDate(), TEST_REPORT_DATA_WEEKLY);
+
 
     private static final ObjectNode TEST_REPORT_DATA_2 = JsonNodeFactory.instance.objectNode();
     static {
@@ -103,7 +109,7 @@ public class BridgeReporterProcessorTest {
             "   \"scheduler\":\"" + TEST_SCHEDULER +"\",\n" +
             "   \"scheduleType\":\"" + TEST_SCHEDULE_TYPE_WEEKLY.toString() + "\",\n" +
             "   \"startDateTime\":\"2016-10-19T00:00:00Z\",\n" +
-            "   \"endDateTime\":\"2016-10-20T23:59:59Z\"\n" +
+            "   \"endDateTime\":\"2016-10-25T23:59:59Z\"\n" +
             "}";
 
     private final JsonNode REQUEST_JSON_WEEKLY = DefaultObjectMapper.INSTANCE.readValue(REQUEST_JSON_TEXT_WEEKLY, JsonNode.class);
@@ -159,8 +165,8 @@ public class BridgeReporterProcessorTest {
 
         // verify
         verify(mockBridgeHelper).getAllStudiesSummary();
-        verify(mockBridgeHelper).getUploadsForStudy(eq(TEST_STUDY_ID), eq(TEST_START_DATETIME), eq(TEST_END_DATETIME));
-        verify(mockBridgeHelper).saveReportForStudy(eq(TEST_STUDY_ID), eq(TEST_REPORT_ID_WEEKLY), eq(TEST_REPORT));
+        verify(mockBridgeHelper, times(7)).getUploadsForStudy(eq(TEST_STUDY_ID), any(), any());
+        verify(mockBridgeHelper).saveReportForStudy(eq(TEST_STUDY_ID), eq(TEST_REPORT_ID_WEEKLY), eq(TEST_REPORT_WEEKLY));
     }
 
     @Test

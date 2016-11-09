@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Stopwatch;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
+import org.joda.time.MutableDateTime;
 import org.sagebionetworks.bridge.json.DefaultObjectMapper;
 import org.sagebionetworks.bridge.reporter.helper.BridgeHelper;
 import org.sagebionetworks.bridge.reporter.request.ReportScheduleName;
@@ -20,6 +21,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -68,8 +71,8 @@ public class BridgeReporterProcessor {
                 ObjectNode reportData = JsonNodeFactory.instance.objectNode();
                 String studyId = studySummary.getIdentifier();
 
-                // get all uploads for this studyid
-                ResourceList<Upload> uploadsForStudy = bridgeHelper.getUploadsForStudy(studyId, startDateTime, endDateTime);
+                // get all uploads for this studyid, differentiating by scheduleType
+                ResourceList<Upload> uploadsForStudy = getUploadsForStudyHelper(studyId, startDateTime, endDateTime, scheduleType);
 
                 // aggregate and grouping by upload status
                 uploadsForStudy.getItems().stream()
@@ -91,5 +94,28 @@ public class BridgeReporterProcessor {
                     " seconds for hash[scheduler]=" + scheduler + ", scheduleType=" + scheduleType + ", startDate=" +
                     startDateTime + ",endDate=" + endDateTime);
         }
+    }
+
+    /**
+     * Helper method to call getUploadsForStudy distinguishing by daily or weekly
+     * @param studyId
+     * @param startDateTime
+     * @param endDateTime
+     * @param scheduleType
+     * @return
+     */
+    private ResourceList<Upload> getUploadsForStudyHelper(String studyId, DateTime startDateTime, DateTime endDateTime, ReportScheduleName scheduleType) {
+        List<Upload> uploadList = new ArrayList<>();
+
+        if (scheduleType == ReportScheduleName.DAILY) {
+            uploadList = bridgeHelper.getUploadsForStudy(studyId, startDateTime, endDateTime).getItems();
+        } else {
+            while (startDateTime.isBefore(endDateTime)) {
+                uploadList.addAll(bridgeHelper.getUploadsForStudy(studyId, startDateTime, startDateTime.withHourOfDay(23).withMinuteOfHour(59).withSecondOfMinute(59).withMillisOfSecond(999)).getItems());
+                startDateTime = startDateTime.plusDays(1);
+            }
+        }
+
+        return new ResourceList<Upload>(uploadList, uploadList.size());
     }
 }
