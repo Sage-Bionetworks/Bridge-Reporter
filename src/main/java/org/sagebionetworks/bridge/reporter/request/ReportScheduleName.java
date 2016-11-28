@@ -17,11 +17,6 @@ public enum ReportScheduleName {
     }
 
     public String getSuffix() throws PollSqsWorkerBadRequestException {
-        if (this == DAILY) {
-            return "-daily-upload-report";
-        } else if (this == WEEKLY) {
-            return "-weekly-upload-report";
-        }
-        throw new PollSqsWorkerBadRequestException("Invalid report schedule type: " + this.getName());
+        return "-" + this.name().toLowerCase() + "-upload-report";
     }
 }

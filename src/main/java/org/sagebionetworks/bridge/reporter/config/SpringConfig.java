@@ -1,5 +1,7 @@
 package org.sagebionetworks.bridge.reporter.config;
 
+import org.sagebionetworks.bridge.config.Config;
+import org.sagebionetworks.bridge.config.PropertiesConfig;
 import org.sagebionetworks.bridge.heartbeat.HeartbeatLogger;
 import org.sagebionetworks.bridge.sdk.ClientInfo;
 import org.sagebionetworks.bridge.sdk.ClientProvider;
@@ -7,17 +9,11 @@ import org.sagebionetworks.bridge.sdk.models.accounts.SignInCredentials;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.support.PropertiesLoaderUtils;
 
-import javax.annotation.PostConstruct;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Properties;
 
 // These configs get credentials from the default credential chain. For developer desktops, this is ~/.aws/credentials.
 // For EC2 instances, this happens transparently.
@@ -37,42 +33,33 @@ public class SpringConfig {
         ClientProvider.setClientInfo(clientInfo);
     }
 
-    private Properties envConfig;
-
-    @PostConstruct
-    public void bridgeConfig() {
-        // setup conf file to load attributes
+    @Bean(name = "reporterConfigProperties")
+    public Config bridgeConfig() throws IOException {
         Path localConfigPath = Paths.get(USER_CONFIG_FILE);
 
-        Resource resource = new ClassPathResource(DEFAULT_CONFIG_FILE);
-
         try {
-            envConfig = PropertiesLoaderUtils.loadProperties(resource);;
-
             if (Files.exists(localConfigPath)) {
-                Properties localProps = new Properties();
-                localProps.load(Files.newBufferedReader(localConfigPath, StandardCharsets.UTF_8));
-                envConfig = localProps;
+                return new PropertiesConfig(DEFAULT_CONFIG_FILE, localConfigPath);
+            } else {
+                return new PropertiesConfig(DEFAULT_CONFIG_FILE);
             }
-
-        } catch (IOException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
         }
     }
 
     @Bean
-    public SignInCredentials bridgeWorkerCredentials() {
-        String study = envConfig.getProperty("bridge.worker.study");
-        String email = envConfig.getProperty("bridge.worker.email");
-        String password = envConfig.getProperty("bridge.worker.password");
+    public SignInCredentials bridgeWorkerCredentials() throws IOException {
+        String study = bridgeConfig().get("bridge.worker.study");
+        String email = bridgeConfig().get("bridge.worker.email");
+        String password = bridgeConfig().get("bridge.worker.password");
         return new SignInCredentials(study, email, password);
     }
 
     @Bean
-    public HeartbeatLogger heartbeatLogger() {
+    public HeartbeatLogger heartbeatLogger() throws IOException {
         HeartbeatLogger heartbeatLogger = new HeartbeatLogger();
-        heartbeatLogger.setIntervalMinutes(Integer.parseInt(envConfig.getProperty("heartbeat.interval.minutes")));
+        heartbeatLogger.setIntervalMinutes(bridgeConfig().getInt("heartbeat.interval.minutes"));
         return heartbeatLogger;
     }
 }

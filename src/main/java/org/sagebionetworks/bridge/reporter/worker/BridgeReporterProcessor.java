@@ -5,8 +5,8 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Stopwatch;
 import org.joda.time.DateTime;
+import org.joda.time.Days;
 import org.joda.time.LocalDate;
-import org.joda.time.MutableDateTime;
 import org.sagebionetworks.bridge.json.DefaultObjectMapper;
 import org.sagebionetworks.bridge.reporter.helper.BridgeHelper;
 import org.sagebionetworks.bridge.reporter.request.ReportScheduleName;
@@ -43,7 +43,7 @@ public class BridgeReporterProcessor {
     }
 
     /** Process the passed sqs msg as JsonNode. */
-    public void process(JsonNode body) throws Exception{
+    public void process(JsonNode body) throws IOException, PollSqsWorkerBadRequestException {
         BridgeReporterRequest request;
         try {
             request = DefaultObjectMapper.INSTANCE.treeToValue(body, BridgeReporterRequest.class);
@@ -56,7 +56,7 @@ public class BridgeReporterProcessor {
         String scheduler = request.getScheduler();
         ReportScheduleName scheduleType = request.getScheduleType();
 
-        String reportId = scheduler + scheduleType.getSuffix();;
+        String reportId = scheduler + scheduleType.getSuffix();
 
         LOG.info("Received request for hash[scheduler]=" + scheduler + ", scheduleType=" + scheduleType + ", startDate=" +
                 startDateTime + ",endDate=" + endDateTime);
@@ -72,7 +72,12 @@ public class BridgeReporterProcessor {
                 String studyId = studySummary.getIdentifier();
 
                 // get all uploads for this studyid, differentiating by scheduleType
-                ResourceList<Upload> uploadsForStudy = getUploadsForStudyHelper(studyId, startDateTime, endDateTime, scheduleType);
+                ResourceList<Upload> uploadsForStudy = null;
+                try {
+                    uploadsForStudy = getUploadsForStudyHelper(studyId, startDateTime, endDateTime, scheduleType);
+                } catch (InterruptedException e) {
+                    LOG.error("InterruptedException: " + e);
+                }
 
                 // aggregate and grouping by upload status
                 uploadsForStudy.getItems().stream()
@@ -96,6 +101,7 @@ public class BridgeReporterProcessor {
         }
     }
 
+
     /**
      * Helper method to call getUploadsForStudy distinguishing by daily or weekly
      * @param studyId
@@ -104,15 +110,17 @@ public class BridgeReporterProcessor {
      * @param scheduleType
      * @return
      */
-    private ResourceList<Upload> getUploadsForStudyHelper(String studyId, DateTime startDateTime, DateTime endDateTime, ReportScheduleName scheduleType) {
+    private ResourceList<Upload> getUploadsForStudyHelper(String studyId, DateTime startDateTime, DateTime endDateTime, ReportScheduleName scheduleType) throws InterruptedException {
         List<Upload> uploadList = new ArrayList<>();
 
-        if (scheduleType == ReportScheduleName.DAILY) {
+        if (Days.daysBetween(startDateTime, endDateTime).isLessThan(Days.days(1))) {
             uploadList = bridgeHelper.getUploadsForStudy(studyId, startDateTime, endDateTime).getItems();
         } else {
             while (startDateTime.isBefore(endDateTime)) {
-                uploadList.addAll(bridgeHelper.getUploadsForStudy(studyId, startDateTime, startDateTime.withHourOfDay(23).withMinuteOfHour(59).withSecondOfMinute(59).withMillisOfSecond(999)).getItems());
+                uploadList.addAll(bridgeHelper.getUploadsForStudy(studyId, startDateTime, startDateTime.plusDays(1).minusMillis(1)).getItems());
                 startDateTime = startDateTime.plusDays(1);
+                // sleep for a while for ddb to meet read capacity
+                TimeUnit.MILLISECONDS.sleep(500);
             }
         }
 

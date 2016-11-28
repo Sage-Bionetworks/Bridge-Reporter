@@ -13,6 +13,7 @@ import org.sagebionetworks.bridge.sdk.models.reports.ReportData;
 import org.sagebionetworks.bridge.sdk.models.studies.StudySummary;
 import org.sagebionetworks.bridge.sdk.models.upload.Upload;
 import org.sagebionetworks.bridge.sdk.utils.BridgeUtils;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
@@ -29,9 +30,6 @@ import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
 
 public class BridgeHelperTest {
-    public BridgeHelperTest() throws IOException {
-    }
-
     private final String json = Tests.unescapeJson("{'contentLength':10000,"+
             "'status':'succeeded','requestedOn':'2016-07-26T22:43:10.392Z',"+
             "'completedOn':'2016-07-26T22:43:10.468Z','completedBy':'s3_worker',"+
@@ -57,14 +55,20 @@ public class BridgeHelperTest {
     }
     private final ResourceList<StudySummary> TEST_STUDY_SUMMARY_LIST = new ResourceList<>(Arrays.asList(TEST_STUDY_SUMMARY), 1);
 
-    private final Upload TEST_UPLOAD = BridgeUtils.getMapper().readValue(json, Upload.class);
-    private final ResourceList<Upload> TEST_UPLOADS = new ResourceList<>(Arrays.asList(TEST_UPLOAD), 1);
+    private Upload testUpload;
+    private ResourceList<Upload> testUploads;
 
     private static BridgeHelper setupBridgeHelperWithSession(Session session) {
         // Spy bridge helper, because signIn() statically calls ClientProvider.signIn()
         BridgeHelper bridgeHelper = spy(new BridgeHelper());
         doReturn(session).when(bridgeHelper).signIn();
         return bridgeHelper;
+    }
+
+    @BeforeClass
+    public void setup() throws IOException {
+        testUpload = BridgeUtils.getMapper().readValue(json, Upload.class);
+        ResourceList<Upload> TEST_UPLOADS = new ResourceList<>(Arrays.asList(testUpload), 1);
     }
 
     @Test
@@ -83,14 +87,14 @@ public class BridgeHelperTest {
     @Test
     public void testGetUploadsForStudy() {
         WorkerClient mockWorkerClient = mock(WorkerClient.class);
-        when(mockWorkerClient.getUploadsForStudy(any(), any(), any())).thenReturn(TEST_UPLOADS);
+        when(mockWorkerClient.getUploadsForStudy(any(), any(), any())).thenReturn(testUploads);
         Session mockSession = mock(Session.class);
         when(mockSession.getWorkerClient()).thenReturn(mockWorkerClient);
         BridgeHelper bridgeHelper = setupBridgeHelperWithSession(mockSession);
 
         ResourceList<Upload> retUploadsForStudy = bridgeHelper.getUploadsForStudy(TEST_STUDY_ID, TEST_START_DATETIME, TEST_END_DATETIME);
         verify(mockWorkerClient).getUploadsForStudy(eq(TEST_STUDY_ID), eq(TEST_START_DATETIME), eq(TEST_END_DATETIME));
-        assertEquals(retUploadsForStudy, TEST_UPLOADS);
+        assertEquals(retUploadsForStudy, testUploads);
     }
 
     @Test
@@ -107,11 +111,11 @@ public class BridgeHelperTest {
     @Test
     public void testSessionHelper() throws Exception {
         WorkerClient mockWorkerClient1 = mock(WorkerClient.class);
-        when(mockWorkerClient1.getUploadsForStudy(eq(TEST_STUDY_ID), eq(TEST_START_DATETIME), eq(TEST_END_DATETIME))).thenReturn(TEST_UPLOADS)
-                .thenReturn(TEST_UPLOADS).thenThrow(NotAuthenticatedException.class);
+        when(mockWorkerClient1.getUploadsForStudy(eq(TEST_STUDY_ID), eq(TEST_START_DATETIME), eq(TEST_END_DATETIME))).thenReturn(testUploads)
+                .thenReturn(testUploads).thenThrow(NotAuthenticatedException.class);
 
         WorkerClient mockWorkerClient2 = mock(WorkerClient.class);
-        when(mockWorkerClient2.getUploadsForStudy(eq(TEST_STUDY_ID), eq(TEST_START_DATETIME), eq(TEST_END_DATETIME))).thenReturn(TEST_UPLOADS);
+        when(mockWorkerClient2.getUploadsForStudy(eq(TEST_STUDY_ID), eq(TEST_START_DATETIME), eq(TEST_END_DATETIME))).thenReturn(testUploads);
 
         // Create 2 mock sessions. Each mock session simply returns its corresponing worker client.
         Session mockSession1 = mock(Session.class);
@@ -125,7 +129,7 @@ public class BridgeHelperTest {
         doReturn(mockSession1).doReturn(mockSession2).when(bridgeHelper).signIn();
 
         ResourceList<Upload> retUploads = bridgeHelper.getUploadsForStudy(TEST_STUDY_ID, TEST_START_DATETIME, TEST_END_DATETIME);
-        assertEquals(retUploads, TEST_UPLOADS);
+        assertEquals(retUploads, testUploads);
 
         verify(mockWorkerClient1, times(1)).getUploadsForStudy(TEST_STUDY_ID, TEST_START_DATETIME, TEST_END_DATETIME);
     }
