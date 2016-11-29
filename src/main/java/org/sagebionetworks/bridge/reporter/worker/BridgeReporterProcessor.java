@@ -18,6 +18,7 @@ import org.sagebionetworks.bridge.sqs.PollSqsWorkerBadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -38,6 +39,7 @@ public class BridgeReporterProcessor {
     private BridgeHelper bridgeHelper;
 
     @Autowired
+    @Qualifier("ReporterHelper")
     public final void setBridgeHelper(BridgeHelper bridgeHelper) {
         this.bridgeHelper = bridgeHelper;
     }
@@ -73,11 +75,7 @@ public class BridgeReporterProcessor {
 
                 // get all uploads for this studyid, differentiating by scheduleType
                 ResourceList<Upload> uploadsForStudy = null;
-                try {
-                    uploadsForStudy = getUploadsForStudyHelper(studyId, startDateTime, endDateTime, scheduleType);
-                } catch (InterruptedException e) {
-                    LOG.error("InterruptedException: " + e);
-                }
+                uploadsForStudy = getUploadsForStudyHelper(studyId, startDateTime, endDateTime, scheduleType);
 
                 // aggregate and grouping by upload status
                 uploadsForStudy.getItems().stream()
@@ -110,7 +108,7 @@ public class BridgeReporterProcessor {
      * @param scheduleType
      * @return
      */
-    private ResourceList<Upload> getUploadsForStudyHelper(String studyId, DateTime startDateTime, DateTime endDateTime, ReportScheduleName scheduleType) throws InterruptedException {
+    private ResourceList<Upload> getUploadsForStudyHelper(String studyId, DateTime startDateTime, DateTime endDateTime, ReportScheduleName scheduleType)  {
         List<Upload> uploadList = new ArrayList<>();
 
         if (Days.daysBetween(startDateTime, endDateTime).isLessThan(Days.days(1))) {
@@ -120,7 +118,11 @@ public class BridgeReporterProcessor {
                 uploadList.addAll(bridgeHelper.getUploadsForStudy(studyId, startDateTime, startDateTime.plusDays(1).minusMillis(1)).getItems());
                 startDateTime = startDateTime.plusDays(1);
                 // sleep for a while for ddb to meet read capacity
-                TimeUnit.MILLISECONDS.sleep(500);
+                try {
+                    TimeUnit.MILLISECONDS.sleep(500);
+                } catch (InterruptedException e) {
+                    LOG.error("InterruptedException occurred for thread sleep", e);
+                }
             }
         }
 
