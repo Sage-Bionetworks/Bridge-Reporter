@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 /**
  * Helper to call Bridge Server to get information such as schemas. Also wraps some of the calls to provide caching.
  */
-@Component
+@Component("ReporterHelper")
 public class BridgeHelper {
     private static final Logger LOG = LoggerFactory.getLogger(BridgeHelper.class);
 

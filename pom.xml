@@ -7,7 +7,7 @@
     <groupId>org.sagebionetworks</groupId>
     <artifactId>Bridge-Reporter</artifactId>
     <version>1.0</version>
-    <packaging>war</packaging>
+    <packaging>jar</packaging>
 
     <properties>
         <aws.version>1.10.56</aws.version>
@@ -19,22 +19,11 @@
         <stormpath.version>1.0.RC4.5</stormpath.version>
     </properties>
 
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>1.2.5.RELEASE</version>
-    </parent>
-
     <dependencies>
         <dependency>
-            <groupId>com.amazonaws</groupId>
-            <artifactId>aws-java-sdk-s3</artifactId>
-            <version>${aws.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.amazonaws</groupId>
-            <artifactId>aws-java-sdk-sqs</artifactId>
-            <version>${aws.version}</version>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+            <version>4.3.4.RELEASE</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -69,27 +58,13 @@
         <dependency>
             <groupId>org.sagebionetworks</groupId>
             <artifactId>bridge-base</artifactId>
-            <version>2.5</version>
+            <version>2.7.2</version>
         </dependency>
         <dependency>
             <groupId>org.sagebionetworks.bridge</groupId>
             <artifactId>java-sdk</artifactId>
             <version>0.11.6</version>
         </dependency>
-        <dependency>
-            <groupId>org.sagebionetworks</groupId>
-            <artifactId>synapseJavaClient</artifactId>
-            <version>131.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-logging</artifactId>
-        </dependency>
-
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>

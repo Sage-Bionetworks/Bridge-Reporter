@@ -1,65 +1,54 @@
 package org.sagebionetworks.bridge.reporter.worker;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Stopwatch;
 import org.joda.time.DateTime;
+import org.joda.time.Days;
 import org.joda.time.LocalDate;
 import org.sagebionetworks.bridge.json.DefaultObjectMapper;
 import org.sagebionetworks.bridge.reporter.helper.BridgeHelper;
+import org.sagebionetworks.bridge.reporter.request.ReportScheduleName;
 import org.sagebionetworks.bridge.sdk.models.ResourceList;
 import org.sagebionetworks.bridge.sdk.models.reports.ReportData;
 import org.sagebionetworks.bridge.sdk.models.studies.StudySummary;
 import org.sagebionetworks.bridge.sdk.models.upload.Upload;
-import org.sagebionetworks.bridge.sqs.PollSqsCallback;
 import org.sagebionetworks.bridge.sqs.PollSqsWorkerBadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.counting;
 
-
 /**
  * SQS callback. Called by the PollSqsWorker. This handles a reporting request.
  */
 @Component
-public class BridgeReporterSqsCallback implements PollSqsCallback {
-    private static final Logger LOG = LoggerFactory.getLogger(BridgeReporterSqsCallback.class);
+public class BridgeReporterProcessor {
+    private static final Logger LOG = LoggerFactory.getLogger(BridgeReporterProcessor.class);
 
     private BridgeHelper bridgeHelper;
 
-    public enum REPORT_SUFFIX {
-        DAILY_SUFFIX("-daily-upload-report"),
-        WEEKLY_SUFFIX("-weekly-upload-report");
-
-        private final String suffix;
-
-        REPORT_SUFFIX(String s) {
-            this.suffix = s;
-        }
-
-        public String getSuffix() {
-            return this.suffix;
-        }
-    }
-
     @Autowired
+    @Qualifier("ReporterHelper")
     public final void setBridgeHelper(BridgeHelper bridgeHelper) {
         this.bridgeHelper = bridgeHelper;
     }
 
-    /** Parses the SQS message. */
-    @Override
-    public void callback(String messageBody) throws IOException, PollSqsWorkerBadRequestException {
+    /** Process the passed sqs msg as JsonNode. */
+    public void process(JsonNode body) throws IOException, PollSqsWorkerBadRequestException {
         BridgeReporterRequest request;
         try {
-            request = DefaultObjectMapper.INSTANCE.readValue(messageBody, BridgeReporterRequest.class);
+            request = DefaultObjectMapper.INSTANCE.treeToValue(body, BridgeReporterRequest.class);
         } catch (IOException ex) {
             throw new PollSqsWorkerBadRequestException("Error parsing request: " + ex.getMessage(), ex);
         }
@@ -67,16 +56,9 @@ public class BridgeReporterSqsCallback implements PollSqsCallback {
         DateTime startDateTime = request.getStartDateTime();
         DateTime endDateTime = request.getEndDateTime();
         String scheduler = request.getScheduler();
-        BridgeReporterRequest.ReportScheduleType scheduleType = request.getScheduleType();
+        ReportScheduleName scheduleType = request.getScheduleType();
 
-        String reportId;
-        if (scheduleType == BridgeReporterRequest.ReportScheduleType.DAILY) {
-            reportId = scheduler + REPORT_SUFFIX.DAILY_SUFFIX.getSuffix();
-        } else if (scheduleType == BridgeReporterRequest.ReportScheduleType.WEEKLY) {
-            reportId = scheduler + REPORT_SUFFIX.WEEKLY_SUFFIX.getSuffix();
-        } else {
-            throw new PollSqsWorkerBadRequestException("Invalid report schedule type: " + scheduleType.toString());
-        }
+        String reportId = scheduler + scheduleType.getSuffix();
 
         LOG.info("Received request for hash[scheduler]=" + scheduler + ", scheduleType=" + scheduleType + ", startDate=" +
                 startDateTime + ",endDate=" + endDateTime);
@@ -91,8 +73,9 @@ public class BridgeReporterSqsCallback implements PollSqsCallback {
                 ObjectNode reportData = JsonNodeFactory.instance.objectNode();
                 String studyId = studySummary.getIdentifier();
 
-                // get all uploads for this studyid
-                ResourceList<Upload> uploadsForStudy = bridgeHelper.getUploadsForStudy(studyId, startDateTime, endDateTime);
+                // get all uploads for this studyid, differentiating by scheduleType
+                ResourceList<Upload> uploadsForStudy = null;
+                uploadsForStudy = getUploadsForStudyHelper(studyId, startDateTime, endDateTime, scheduleType);
 
                 // aggregate and grouping by upload status
                 uploadsForStudy.getItems().stream()
@@ -114,5 +97,35 @@ public class BridgeReporterSqsCallback implements PollSqsCallback {
                     " seconds for hash[scheduler]=" + scheduler + ", scheduleType=" + scheduleType + ", startDate=" +
                     startDateTime + ",endDate=" + endDateTime);
         }
+    }
+
+
+    /**
+     * Helper method to call getUploadsForStudy distinguishing by daily or weekly
+     * @param studyId
+     * @param startDateTime
+     * @param endDateTime
+     * @param scheduleType
+     * @return
+     */
+    private ResourceList<Upload> getUploadsForStudyHelper(String studyId, DateTime startDateTime, DateTime endDateTime, ReportScheduleName scheduleType)  {
+        List<Upload> uploadList = new ArrayList<>();
+
+        if (Days.daysBetween(startDateTime, endDateTime).isLessThan(Days.days(1))) {
+            uploadList = bridgeHelper.getUploadsForStudy(studyId, startDateTime, endDateTime).getItems();
+        } else {
+            while (startDateTime.isBefore(endDateTime)) {
+                uploadList.addAll(bridgeHelper.getUploadsForStudy(studyId, startDateTime, startDateTime.plusDays(1).minusMillis(1)).getItems());
+                startDateTime = startDateTime.plusDays(1);
+                // sleep for a while for ddb to meet read capacity
+                try {
+                    TimeUnit.MILLISECONDS.sleep(500);
+                } catch (InterruptedException e) {
+                    LOG.error("InterruptedException occurred for thread sleep", e);
+                }
+            }
+        }
+
+        return new ResourceList<Upload>(uploadList, uploadList.size());
     }
 }

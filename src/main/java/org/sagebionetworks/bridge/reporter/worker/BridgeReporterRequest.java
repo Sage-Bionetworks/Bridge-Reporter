@@ -8,23 +8,19 @@ import com.google.common.base.Strings;
 import org.joda.time.DateTime;
 import org.sagebionetworks.bridge.json.DateTimeDeserializer;
 import org.sagebionetworks.bridge.json.DateTimeToStringSerializer;
+import org.sagebionetworks.bridge.reporter.request.ReportScheduleName;
 
 /** Represents a request to the Bridge Reporting Service. */
 @JsonDeserialize(builder = BridgeReporterRequest.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonIgnoreProperties(ignoreUnknown=true)
 public class BridgeReporterRequest {
-    public enum ReportScheduleType {
-        DAILY,
-        WEEKLY;
-    }
 
     private final DateTime startDateTime;
     private final DateTime endDateTime;
     private final String scheduler;
-    private final ReportScheduleType scheduleType;
+    private final ReportScheduleName scheduleType;
 
-    public BridgeReporterRequest(DateTime startDateTime, DateTime endDateTime, String scheduler, ReportScheduleType scheduleType) {
+    public BridgeReporterRequest(DateTime startDateTime, DateTime endDateTime, String scheduler, ReportScheduleName scheduleType) {
         this.startDateTime = startDateTime;
         this.endDateTime = endDateTime;
         this.scheduler = scheduler;
@@ -46,18 +42,17 @@ public class BridgeReporterRequest {
         return this.scheduler;
     }
 
-    public ReportScheduleType getScheduleType() {
+    public ReportScheduleName getScheduleType() {
         return this.scheduleType;
     }
     /*
     Bridge-Reporter request builder
      */
-    @JsonIgnoreProperties(ignoreUnknown=true)
     public static class Builder {
         private DateTime startDateTime;
         private DateTime endDateTime;
         private String scheduler;
-        private ReportScheduleType scheduleType;
+        private ReportScheduleName scheduleType;
 
         @JsonDeserialize(using = DateTimeDeserializer.class)
         public Builder withStartDateTime(DateTime startDateTime) {
@@ -76,7 +71,7 @@ public class BridgeReporterRequest {
             return this;
         }
 
-        public Builder withScheduleType(ReportScheduleType scheduleType) {
+        public Builder withScheduleType(ReportScheduleName scheduleType) {
             this.scheduleType = scheduleType;
             return this;
         }
