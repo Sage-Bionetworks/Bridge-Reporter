@@ -1,7 +1,5 @@
 package org.sagebionetworks.bridge.reporter.request;
 
-import org.sagebionetworks.bridge.sdk.models.accounts.SharingScope;
-import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import static org.testng.Assert.assertEquals;

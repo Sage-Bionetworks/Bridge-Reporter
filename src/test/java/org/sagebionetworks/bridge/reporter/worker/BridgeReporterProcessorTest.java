@@ -1,25 +1,25 @@
 package org.sagebionetworks.bridge.reporter.worker;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import org.joda.time.DateTime;
 import org.sagebionetworks.bridge.json.DefaultObjectMapper;
 import org.sagebionetworks.bridge.reporter.Tests;
 import org.sagebionetworks.bridge.reporter.helper.BridgeHelper;
 import org.sagebionetworks.bridge.reporter.request.ReportScheduleName;
-import org.sagebionetworks.bridge.sdk.models.ResourceList;
-import org.sagebionetworks.bridge.sdk.models.reports.ReportData;
-import org.sagebionetworks.bridge.sdk.models.studies.StudySummary;
-import org.sagebionetworks.bridge.sdk.models.upload.Upload;
-import org.sagebionetworks.bridge.sdk.utils.BridgeUtils;
+import org.sagebionetworks.bridge.rest.RestUtils;
+import org.sagebionetworks.bridge.rest.model.ReportData;
+import org.sagebionetworks.bridge.rest.model.Study;
+import org.sagebionetworks.bridge.rest.model.Upload;
 import org.sagebionetworks.bridge.sqs.PollSqsWorkerBadRequestException;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
@@ -39,40 +39,24 @@ public class BridgeReporterProcessorTest {
     private static final ReportScheduleName TEST_SCHEDULE_TYPE_WEEKLY = ReportScheduleName.WEEKLY;
     private static final DateTime TEST_START_DATETIME = DateTime.parse("2016-10-19T00:00:00Z");
     private static final DateTime TEST_END_DATETIME = DateTime.parse("2016-10-19T23:59:59Z");
-    private static final DateTime TEST_END_DATETIME_WEEKLY = DateTime.parse("2016-10-25T23:59:59.999Z");
 
-    private static final ObjectNode TEST_REPORT_DATA = JsonNodeFactory.instance.objectNode();
-    private static final ObjectNode TEST_REPORT_DATA_WEEKLY = JsonNodeFactory.instance.objectNode();
-    static {
-        TEST_REPORT_DATA.put("SUCCEEDED", 1);
-        TEST_REPORT_DATA_WEEKLY.put("SUCCEEDED", 7);
-    }
-    private static final ReportData TEST_REPORT = new ReportData(TEST_START_DATETIME.toLocalDate(), TEST_REPORT_DATA);
-    private static final ReportData TEST_REPORT_WEEKLY = new ReportData(TEST_START_DATETIME.toLocalDate(), TEST_REPORT_DATA_WEEKLY);
+    private static final Map<String, Integer> TEST_REPORT_DATA = ImmutableMap.of("succeeded", 1);
+    private static final Map<String, Integer> TEST_REPORT_DATA_WEEKLY = ImmutableMap.of("succeeded", 7);
+    private static final ReportData TEST_REPORT = new ReportData().date(TEST_START_DATETIME.toLocalDate()).data(
+            TEST_REPORT_DATA);
+    private static final ReportData TEST_REPORT_WEEKLY = new ReportData().date(TEST_START_DATETIME.toLocalDate()).data(
+            TEST_REPORT_DATA_WEEKLY);
 
+    private static final Map<String, Integer> TEST_REPORT_DATA_2 = ImmutableMap.<String, Integer>builder()
+            .put("succeeded", 2).put("requested", 1).build();
+    private static final ReportData TEST_REPORT_2 = new ReportData().date(TEST_START_DATETIME.toLocalDate()).data(
+            TEST_REPORT_DATA_2);
 
-    private static final ObjectNode TEST_REPORT_DATA_2 = JsonNodeFactory.instance.objectNode();
-    static {
-        TEST_REPORT_DATA_2.put("SUCCEEDED", 2);
-        TEST_REPORT_DATA_2.put("REQUESTED", 1);
-    }
-    private static final ReportData TEST_REPORT_2 = new ReportData(TEST_START_DATETIME.toLocalDate(), TEST_REPORT_DATA_2);
-
-
-    private static final StudySummary TEST_STUDY_SUMMARY;
-    private static final StudySummary TEST_STUDY_SUMMARY_2;
-    static {
-        TEST_STUDY_SUMMARY = new StudySummary();
-        TEST_STUDY_SUMMARY.setIdentifier(TEST_STUDY_ID);
-        TEST_STUDY_SUMMARY.setName(TEST_STUDY_ID);
-
-        TEST_STUDY_SUMMARY_2 = new StudySummary();
-        TEST_STUDY_SUMMARY_2.setIdentifier(TEST_STUDY_ID_2);
-        TEST_STUDY_SUMMARY_2.setName(TEST_STUDY_ID_2);
-    }
-    private static final ResourceList<StudySummary> TEST_STUDY_SUMMARY_LIST = new ResourceList<>(Arrays.asList(TEST_STUDY_SUMMARY), 1);
-    private static final ResourceList<StudySummary> TEST_STUDY_SUMMARY_LIST_2 = new ResourceList<>(Arrays.asList(TEST_STUDY_SUMMARY, TEST_STUDY_SUMMARY_2), 2);
-
+    private static final Study TEST_STUDY_SUMMARY = new Study().identifier(TEST_STUDY_ID).name(TEST_STUDY_ID);
+    private static final Study TEST_STUDY_SUMMARY_2 = new Study().identifier(TEST_STUDY_ID_2).name(TEST_STUDY_ID_2);
+    private static final List<Study> TEST_STUDY_SUMMARY_LIST = ImmutableList.of(TEST_STUDY_SUMMARY);
+    private static final List<Study> TEST_STUDY_SUMMARY_LIST_2 = ImmutableList.of(TEST_STUDY_SUMMARY,
+            TEST_STUDY_SUMMARY_2);
 
     // test request
     private static final String UPLOAD_TEXT = Tests.unescapeJson("{'contentLength':10000,"+
@@ -119,12 +103,8 @@ public class BridgeReporterProcessorTest {
     private JsonNode requestJsonWeekly;
     private JsonNode requestJsonInvalid;
 
-    private Upload testUpload;
-    private Upload testUpload2;
-    private Upload testUpload3;
-
-    private ResourceList<Upload> testUploads;
-    private ResourceList<Upload> testUploads2;
+    private List<Upload> testUploads;
+    private List<Upload> testUploads2;
 
     private BridgeHelper mockBridgeHelper;
     private BridgeReporterProcessor processor;
@@ -135,12 +115,12 @@ public class BridgeReporterProcessorTest {
         requestJsonWeekly = DefaultObjectMapper.INSTANCE.readValue(REQUEST_JSON_TEXT_WEEKLY, JsonNode.class);
         requestJsonInvalid = DefaultObjectMapper.INSTANCE.readValue(REQUEST_JSON_TEXT_INVALID, JsonNode.class);
 
-        testUpload = BridgeUtils.getMapper().readValue(UPLOAD_TEXT, Upload.class);
-        testUpload2 = BridgeUtils.getMapper().readValue(UPLOAD_TEXT_2, Upload.class);
-        testUpload3 = BridgeUtils.getMapper().readValue(UPLOAD_TEXT_3, Upload.class);
+        Upload testUpload = RestUtils.GSON.fromJson(UPLOAD_TEXT, Upload.class);
+        Upload testUpload2 = RestUtils.GSON.fromJson(UPLOAD_TEXT_2, Upload.class);
+        Upload testUpload3 = RestUtils.GSON.fromJson(UPLOAD_TEXT_3, Upload.class);
 
-        testUploads = new ResourceList<>(Arrays.asList(testUpload), 1);
-        testUploads2 = new ResourceList<>(Arrays.asList(testUpload, testUpload2, testUpload3), 3);
+        testUploads = ImmutableList.of(testUpload);
+        testUploads2 = ImmutableList.of(testUpload, testUpload2, testUpload3);
     }
 
     @BeforeMethod

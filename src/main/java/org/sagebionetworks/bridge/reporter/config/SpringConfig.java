@@ -3,9 +3,10 @@ package org.sagebionetworks.bridge.reporter.config;
 import org.sagebionetworks.bridge.config.Config;
 import org.sagebionetworks.bridge.config.PropertiesConfig;
 import org.sagebionetworks.bridge.heartbeat.HeartbeatLogger;
-import org.sagebionetworks.bridge.sdk.ClientInfo;
-import org.sagebionetworks.bridge.sdk.ClientProvider;
-import org.sagebionetworks.bridge.sdk.models.accounts.SignInCredentials;
+import org.sagebionetworks.bridge.rest.ClientManager;
+import org.sagebionetworks.bridge.rest.model.ClientInfo;
+import org.sagebionetworks.bridge.rest.model.SignIn;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -26,34 +27,31 @@ public class SpringConfig {
     private static final String DEFAULT_CONFIG_FILE = CONFIG_FILE;
     private static final String USER_CONFIG_FILE = System.getProperty("user.home") + "/" + CONFIG_FILE;
 
-    // ClientProvider needs to be statically configured.
-    static {
-        // set client info
-        ClientInfo clientInfo = new ClientInfo.Builder().withAppName("BridgeReporter").withAppVersion(1).build();
-        ClientProvider.setClientInfo(clientInfo);
-    }
-
     @Bean(name = "reporterConfigProperties")
     public Config bridgeConfig() throws IOException {
         Path localConfigPath = Paths.get(USER_CONFIG_FILE);
 
-        try {
-            if (Files.exists(localConfigPath)) {
-                return new PropertiesConfig(DEFAULT_CONFIG_FILE, localConfigPath);
-            } else {
-                return new PropertiesConfig(DEFAULT_CONFIG_FILE);
-            }
-        } catch (IOException ex) {
-            throw new RuntimeException(ex);
+        if (Files.exists(localConfigPath)) {
+            return new PropertiesConfig(DEFAULT_CONFIG_FILE, localConfigPath);
+        } else {
+            return new PropertiesConfig(DEFAULT_CONFIG_FILE);
         }
     }
 
     @Bean
-    public SignInCredentials bridgeWorkerCredentials() throws IOException {
-        String study = bridgeConfig().get("bridge.worker.study");
-        String email = bridgeConfig().get("bridge.worker.email");
-        String password = bridgeConfig().get("bridge.worker.password");
-        return new SignInCredentials(study, email, password);
+    public ClientManager bridgeClientManager() throws IOException {
+        // client info
+        ClientInfo clientInfo = new ClientInfo().appName("BridgeReporter").appVersion(1);
+
+        // sign-in credentials
+        Config config = bridgeConfig();
+        String study = config.get("bridge.worker.study");
+        String email = config.get("bridge.worker.email");
+        String password = config.get("bridge.worker.password");
+        SignIn signIn = new SignIn().study(study).email(email).password(password);
+
+        // client manager
+        return new ClientManager.Builder().withClientInfo(clientInfo).withSignIn(signIn).build();
     }
 
     @Bean
