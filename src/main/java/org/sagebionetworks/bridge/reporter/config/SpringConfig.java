@@ -40,18 +40,18 @@ public class SpringConfig {
 
     @Bean
     public ClientManager bridgeClientManager() throws IOException {
-        // client info
         ClientInfo clientInfo = new ClientInfo().appName("BridgeReporter").appVersion(1);
+        return new ClientManager.Builder().withClientInfo(clientInfo).withSignIn(bridgeCredentials()).build();
+    }
 
+    @Bean
+    public SignIn bridgeCredentials() throws IOException {
         // sign-in credentials
         Config config = bridgeConfig();
         String study = config.get("bridge.worker.study");
         String email = config.get("bridge.worker.email");
         String password = config.get("bridge.worker.password");
-        SignIn signIn = new SignIn().study(study).email(email).password(password);
-
-        // client manager
-        return new ClientManager.Builder().withClientInfo(clientInfo).withSignIn(signIn).build();
+        return new SignIn().study(study).email(email).password(password);
     }
 
     @Bean
