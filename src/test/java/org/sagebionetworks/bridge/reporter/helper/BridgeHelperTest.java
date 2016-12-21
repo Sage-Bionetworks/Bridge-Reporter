@@ -7,15 +7,20 @@ import org.joda.time.DateTime;
 import org.sagebionetworks.bridge.reporter.Tests;
 import org.sagebionetworks.bridge.rest.ClientManager;
 import org.sagebionetworks.bridge.rest.RestUtils;
+import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
 import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
+import org.sagebionetworks.bridge.rest.exceptions.NotAuthenticatedException;
 import org.sagebionetworks.bridge.rest.model.Message;
 import org.sagebionetworks.bridge.rest.model.ReportData;
+import org.sagebionetworks.bridge.rest.model.SignIn;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyList;
 import org.sagebionetworks.bridge.rest.model.Upload;
 import org.sagebionetworks.bridge.rest.model.UploadList;
+import org.sagebionetworks.bridge.rest.model.UserSessionInfo;
 
+import org.mockito.InOrder;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 import retrofit2.Call;
@@ -25,6 +30,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -38,6 +44,7 @@ public class BridgeHelperTest {
             "'uploadDate':'2016-10-10','uploadId':'DEF','validationMessageList':"+
             "['message 1','message 2'],'schemaId':'schemaId','schemaRevision':2,'type':'Upload'}");
 
+    private static final SignIn TEST_SIGN_IN = new SignIn();
     private static final String TEST_STUDY_ID = "api";
     private static final String TEST_REPORT_ID = "test-report";
     private static final DateTime TEST_START_DATETIME = new DateTime();
@@ -120,5 +127,59 @@ public class BridgeHelperTest {
 
         bridgeHelper.saveReportForStudy(TEST_STUDY_ID, TEST_REPORT_ID, TEST_REPORT);
         verify(mockCall).execute();
+    }
+
+    @Test
+    public void testSessionHelper() throws Exception {
+        // 3 test cases:
+        // 1. first request initializes session
+        // 2. second request re-uses same session
+        // 3. third request gets 401'ed, refreshes session
+        //
+        // This necessitates 4 calls to our test server call (we'll use save report):
+        // 1. Initial call succeeds.
+        // 2. Second call also succeeds.
+        // 3. Third call throws 401.
+        // 4. Fourth call succeeds, to complete our call pattern.
+
+        // Mock ForWorkersApi - third call throws
+        Call<Message> mockReportCall1 = mock(Call.class);
+        Call<Message> mockReportCall2 = mock(Call.class);
+        Call<Message> mockReportCall3a = mock(Call.class);
+        Call<Message> mockReportCall3b = mock(Call.class);
+        when(mockReportCall3a.execute()).thenThrow(NotAuthenticatedException.class);
+
+        ForWorkersApi mockWorkersApi = mock(ForWorkersApi.class);
+        when(mockWorkersApi.saveReportForStudy(TEST_STUDY_ID, TEST_REPORT_ID, TEST_REPORT)).thenReturn(mockReportCall1,
+                mockReportCall2, mockReportCall3a, mockReportCall3b);
+
+        // Mock AuthenticationApi
+        Call<UserSessionInfo> mockSignInCall = mock(Call.class);
+        AuthenticationApi mockAuthApi = mock(AuthenticationApi.class);
+        when(mockAuthApi.signIn(TEST_SIGN_IN)).thenReturn(mockSignInCall);
+
+        // Mock Client Manager
+        ClientManager mockClientManager = mock(ClientManager.class);
+        when(mockClientManager.getClient(AuthenticationApi.class)).thenReturn(mockAuthApi);
+        when(mockClientManager.getClient(ForWorkersApi.class)).thenReturn(mockWorkersApi);
+
+        // Set up Bridge Helper
+        BridgeHelper bridgeHelper = new BridgeHelper();
+        bridgeHelper.setBridgeClientManager(mockClientManager);
+        bridgeHelper.setBridgeCredentials(TEST_SIGN_IN);
+
+        // execute
+        for (int i = 0; i < 3; i++) {
+            bridgeHelper.saveReportForStudy(TEST_STUDY_ID, TEST_REPORT_ID, TEST_REPORT);
+        }
+
+        // Validate behind the scenes, in order.
+        InOrder inOrder = inOrder(mockReportCall1, mockReportCall2, mockReportCall3a, mockSignInCall,
+                mockReportCall3b);
+        inOrder.verify(mockReportCall1).execute();
+        inOrder.verify(mockReportCall2).execute();
+        inOrder.verify(mockReportCall3a).execute();
+        inOrder.verify(mockSignInCall).execute();
+        inOrder.verify(mockReportCall3b).execute();
     }
 }
