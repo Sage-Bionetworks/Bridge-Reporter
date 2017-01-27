@@ -1,6 +1,7 @@
 package org.sagebionetworks.bridge.reporter.helper;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.joda.time.DateTime;
@@ -18,6 +19,7 @@ import org.sagebionetworks.bridge.rest.model.ReportData;
 import org.sagebionetworks.bridge.rest.model.SignIn;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.Upload;
+import org.sagebionetworks.bridge.rest.model.UploadList;
 
 /**
  * Helper to call Bridge Server to get information such as schemas. Also wraps some of the calls to provide caching.
@@ -25,6 +27,8 @@ import org.sagebionetworks.bridge.rest.model.Upload;
 @Component("ReporterHelper")
 public class BridgeHelper {
     private static final Logger LOG = LoggerFactory.getLogger(BridgeHelper.class);
+
+    static final long MAX_PAGE_SIZE = 100L;
 
     private ClientManager bridgeClientManager;
     private SignIn bridgeCredentials;
@@ -51,11 +55,22 @@ public class BridgeHelper {
 
     /*
      * Helper method to get all uploads for specified study and date range
+     * Paginated results should be added in one list altogether
      */
     public List<Upload> getUploadsForStudy(String studyId, DateTime startDateTime, DateTime endDateTime)
             throws IOException {
-        return sessionHelper(() -> bridgeClientManager.getClient(ForWorkersApi.class).getUploadsInStudy(studyId,
-                startDateTime, endDateTime).execute().body().getItems());
+
+        List<Upload> retList = new ArrayList<>();
+        String offsetKey = null;
+
+        do {
+            UploadList retBody = bridgeClientManager.getClient(ForWorkersApi.class).getUploadsInStudy(studyId,
+                    startDateTime, endDateTime, MAX_PAGE_SIZE, offsetKey).execute().body();
+            retList.addAll(retBody.getItems());
+            offsetKey = retBody.getOffsetKey();
+        } while (offsetKey != null);
+
+        return retList;
     }
 
     /**

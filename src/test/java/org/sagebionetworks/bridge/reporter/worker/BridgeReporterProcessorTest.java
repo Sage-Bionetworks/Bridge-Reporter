@@ -1,9 +1,24 @@
 package org.sagebionetworks.bridge.reporter.worker;
 
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.joda.time.DateTime;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
+
 import org.sagebionetworks.bridge.json.DefaultObjectMapper;
 import org.sagebionetworks.bridge.reporter.Tests;
 import org.sagebionetworks.bridge.reporter.helper.BridgeHelper;
@@ -13,20 +28,6 @@ import org.sagebionetworks.bridge.rest.model.ReportData;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.Upload;
 import org.sagebionetworks.bridge.sqs.PollSqsWorkerBadRequestException;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 
 public class BridgeReporterProcessorTest {
@@ -41,7 +42,7 @@ public class BridgeReporterProcessorTest {
     private static final DateTime TEST_END_DATETIME = DateTime.parse("2016-10-19T23:59:59Z");
 
     private static final Map<String, Integer> TEST_REPORT_DATA = ImmutableMap.of("succeeded", 1);
-    private static final Map<String, Integer> TEST_REPORT_DATA_WEEKLY = ImmutableMap.of("succeeded", 7);
+    private static final Map<String, Integer> TEST_REPORT_DATA_WEEKLY = ImmutableMap.of("succeeded", 1);
     private static final ReportData TEST_REPORT = new ReportData().date(TEST_START_DATETIME.toLocalDate()).data(
             TEST_REPORT_DATA);
     private static final ReportData TEST_REPORT_WEEKLY = new ReportData().date(TEST_START_DATETIME.toLocalDate()).data(
@@ -152,15 +153,7 @@ public class BridgeReporterProcessorTest {
 
         // verify
         verify(mockBridgeHelper).getAllStudiesSummary();
-        verify(mockBridgeHelper, times(7)).getUploadsForStudy(eq(TEST_STUDY_ID), any(), any());
-
-        verify(mockBridgeHelper).getUploadsForStudy(eq(TEST_STUDY_ID), eq(TEST_START_DATETIME), eq(TEST_START_DATETIME.plusDays(1).minusMillis(1)));
-        verify(mockBridgeHelper).getUploadsForStudy(eq(TEST_STUDY_ID), eq(TEST_START_DATETIME.plusDays(1)), eq(TEST_START_DATETIME.plusDays(2).minusMillis(1)));
-        verify(mockBridgeHelper).getUploadsForStudy(eq(TEST_STUDY_ID), eq(TEST_START_DATETIME.plusDays(2)), eq(TEST_START_DATETIME.plusDays(3).minusMillis(1)));
-        verify(mockBridgeHelper).getUploadsForStudy(eq(TEST_STUDY_ID), eq(TEST_START_DATETIME.plusDays(3)), eq(TEST_START_DATETIME.plusDays(4).minusMillis(1)));
-        verify(mockBridgeHelper).getUploadsForStudy(eq(TEST_STUDY_ID), eq(TEST_START_DATETIME.plusDays(4)), eq(TEST_START_DATETIME.plusDays(5).minusMillis(1)));
-        verify(mockBridgeHelper).getUploadsForStudy(eq(TEST_STUDY_ID), eq(TEST_START_DATETIME.plusDays(5)), eq(TEST_START_DATETIME.plusDays(6).minusMillis(1)));
-        verify(mockBridgeHelper).getUploadsForStudy(eq(TEST_STUDY_ID), eq(TEST_START_DATETIME.plusDays(6)), eq(TEST_START_DATETIME.plusDays(7).minusMillis(1)));
+        verify(mockBridgeHelper, times(1)).getUploadsForStudy(eq(TEST_STUDY_ID), any(), any());
 
         verify(mockBridgeHelper).saveReportForStudy(eq(TEST_STUDY_ID), eq(TEST_REPORT_ID_WEEKLY), eq(TEST_REPORT_WEEKLY));
     }

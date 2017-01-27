@@ -1,8 +1,26 @@
 package org.sagebionetworks.bridge.reporter.helper;
 
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.sagebionetworks.bridge.reporter.helper.BridgeHelper.MAX_PAGE_SIZE;
+import static org.testng.Assert.assertEquals;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.joda.time.DateTime;
+import org.mockito.InOrder;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
+import retrofit2.Call;
+import retrofit2.Response;
 
 import org.sagebionetworks.bridge.reporter.Tests;
 import org.sagebionetworks.bridge.rest.ClientManager;
@@ -19,22 +37,6 @@ import org.sagebionetworks.bridge.rest.model.StudyList;
 import org.sagebionetworks.bridge.rest.model.Upload;
 import org.sagebionetworks.bridge.rest.model.UploadList;
 import org.sagebionetworks.bridge.rest.model.UserSessionInfo;
-
-import org.mockito.InOrder;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.Test;
-import retrofit2.Call;
-import retrofit2.Response;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.testng.Assert.assertEquals;
 
 @SuppressWarnings("unchecked")
 public class BridgeHelperTest {
@@ -96,7 +98,7 @@ public class BridgeHelperTest {
         when(mockCall.execute()).thenReturn(response);
 
         ForWorkersApi mockWorkerClient = mock(ForWorkersApi.class);
-        when(mockWorkerClient.getUploadsInStudy(TEST_STUDY_ID, TEST_START_DATETIME, TEST_END_DATETIME)).thenReturn(
+        when(mockWorkerClient.getUploadsInStudy(TEST_STUDY_ID, TEST_START_DATETIME, TEST_END_DATETIME, MAX_PAGE_SIZE, null)).thenReturn(
                 mockCall);
 
         ClientManager mockClientManager = mock(ClientManager.class);
@@ -109,6 +111,45 @@ public class BridgeHelperTest {
         List<Upload> retUploadsForStudy = bridgeHelper.getUploadsForStudy(TEST_STUDY_ID, TEST_START_DATETIME,
                 TEST_END_DATETIME);
         assertEquals(retUploadsForStudy, ImmutableList.of(testUpload));
+    }
+
+    @Test
+    public void testGetUploadsForStudyPaginated() throws Exception {
+        // mock SDK get uploads call
+        UploadList uploadList = new UploadList().addItemsItem(testUpload);
+        uploadList.setOffsetKey("offsetKey");
+        Response<UploadList> response = Response.success(uploadList);
+        UploadList secondUploadList = new UploadList().addItemsItem(testUpload);
+        Response<UploadList> secondResponse = Response.success(secondUploadList);
+
+        // return twice
+        Call<UploadList> mockCall = mock(Call.class);
+        when(mockCall.execute()).thenReturn(response);
+        Call<UploadList> secondMockCall = mock(Call.class);
+        when(secondMockCall.execute()).thenReturn(secondResponse);
+
+        ForWorkersApi mockWorkerClient = mock(ForWorkersApi.class);
+        when(mockWorkerClient.getUploadsInStudy(TEST_STUDY_ID, TEST_START_DATETIME, TEST_END_DATETIME, MAX_PAGE_SIZE, null)).thenReturn(
+                mockCall);
+        when(mockWorkerClient.getUploadsInStudy(TEST_STUDY_ID, TEST_START_DATETIME, TEST_END_DATETIME, MAX_PAGE_SIZE, "offsetKey")).thenReturn(
+                secondMockCall);
+
+        ClientManager mockClientManager = mock(ClientManager.class);
+        when(mockClientManager.getClient(ForWorkersApi.class)).thenReturn(mockWorkerClient);
+
+        // set up BridgeHelper
+        BridgeHelper bridgeHelper = new BridgeHelper();
+        bridgeHelper.setBridgeClientManager(mockClientManager);
+
+        // execute
+        List<Upload> retUploadsForStudy = bridgeHelper.getUploadsForStudy(TEST_STUDY_ID, TEST_START_DATETIME,
+                TEST_END_DATETIME);
+
+        // verify
+        // called twice
+        verify(mockWorkerClient, times(2)).getUploadsInStudy(any(), any(), any(), any(), any());
+        // contain 2 test uploads
+        assertEquals(retUploadsForStudy, ImmutableList.of(testUpload, testUpload));
     }
 
     @Test
