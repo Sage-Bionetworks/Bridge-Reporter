@@ -43,7 +43,7 @@ public class BridgeReporterProcessor {
     }
 
     /** Process the passed sqs msg as JsonNode. */
-    public void process(JsonNode body) throws IOException, PollSqsWorkerBadRequestException {
+    public void process(JsonNode body) throws IOException, PollSqsWorkerBadRequestException, InterruptedException {
         BridgeReporterRequest request;
         try {
             request = DefaultObjectMapper.INSTANCE.treeToValue(body, BridgeReporterRequest.class);

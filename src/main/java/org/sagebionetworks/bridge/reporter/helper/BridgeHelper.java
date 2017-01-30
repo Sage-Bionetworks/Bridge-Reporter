@@ -28,7 +28,9 @@ import org.sagebionetworks.bridge.rest.model.UploadList;
 public class BridgeHelper {
     private static final Logger LOG = LoggerFactory.getLogger(BridgeHelper.class);
 
-    static final long MAX_PAGE_SIZE = 100L;
+    // match read capacity in ddb table
+    static final long MAX_PAGE_SIZE = 30L;
+    private static final long THREAD_SLEEP_INTERVAL = 1000L;
 
     private ClientManager bridgeClientManager;
     private SignIn bridgeCredentials;
@@ -58,16 +60,19 @@ public class BridgeHelper {
      * Paginated results should be added in one list altogether
      */
     public List<Upload> getUploadsForStudy(String studyId, DateTime startDateTime, DateTime endDateTime)
-            throws IOException {
+            throws IOException, InterruptedException {
 
         List<Upload> retList = new ArrayList<>();
         String offsetKey = null;
 
         do {
-            UploadList retBody = bridgeClientManager.getClient(ForWorkersApi.class).getUploadsInStudy(studyId,
-                    startDateTime, endDateTime, MAX_PAGE_SIZE, offsetKey).execute().body();
+            final String temOffsetKey = offsetKey;
+            UploadList retBody = sessionHelper(() -> bridgeClientManager.getClient(ForWorkersApi.class).getUploadsInStudy(studyId,
+                    startDateTime, endDateTime, MAX_PAGE_SIZE, temOffsetKey).execute().body());
             retList.addAll(retBody.getItems());
             offsetKey = retBody.getOffsetKey();
+            // sleep a second
+            Thread.sleep(THREAD_SLEEP_INTERVAL);
         } while (offsetKey != null);
 
         return retList;
