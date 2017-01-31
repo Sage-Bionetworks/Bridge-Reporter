@@ -29,7 +29,7 @@ public class BridgeHelper {
     private static final Logger LOG = LoggerFactory.getLogger(BridgeHelper.class);
 
     // match read capacity in ddb table
-    static final long MAX_PAGE_SIZE = 30L;
+    static final long MAX_PAGE_SIZE = 10L;
     private static final long THREAD_SLEEP_INTERVAL = 1000L;
 
     private ClientManager bridgeClientManager;
@@ -60,7 +60,7 @@ public class BridgeHelper {
      * Paginated results should be added in one list altogether
      */
     public List<Upload> getUploadsForStudy(String studyId, DateTime startDateTime, DateTime endDateTime)
-            throws IOException, InterruptedException {
+            throws IOException {
 
         List<Upload> retList = new ArrayList<>();
         String offsetKey = null;
@@ -72,7 +72,11 @@ public class BridgeHelper {
             retList.addAll(retBody.getItems());
             offsetKey = retBody.getOffsetKey();
             // sleep a second
-            Thread.sleep(THREAD_SLEEP_INTERVAL);
+            try {
+                Thread.sleep(THREAD_SLEEP_INTERVAL);
+            } catch (InterruptedException e) {
+                LOG.warn("The thread for get uploads was being interrupted.", e);
+            }
         } while (offsetKey != null);
 
         return retList;
