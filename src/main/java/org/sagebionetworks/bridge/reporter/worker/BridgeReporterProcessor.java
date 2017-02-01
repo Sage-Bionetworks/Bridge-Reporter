@@ -1,10 +1,24 @@
 package org.sagebionetworks.bridge.reporter.worker;
 
+import static java.util.stream.Collectors.counting;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.base.Stopwatch;
 import org.joda.time.DateTime;
-import org.joda.time.Days;
 import org.joda.time.LocalDate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
+
 import org.sagebionetworks.bridge.json.DefaultObjectMapper;
 import org.sagebionetworks.bridge.reporter.helper.BridgeHelper;
 import org.sagebionetworks.bridge.reporter.request.ReportScheduleName;
@@ -12,21 +26,6 @@ import org.sagebionetworks.bridge.rest.model.ReportData;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.Upload;
 import org.sagebionetworks.bridge.sqs.PollSqsWorkerBadRequestException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Component;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-
-import static java.util.stream.Collectors.counting;
 
 /**
  * SQS callback. Called by the PollSqsWorker. This handles a reporting request.
@@ -44,7 +43,7 @@ public class BridgeReporterProcessor {
     }
 
     /** Process the passed sqs msg as JsonNode. */
-    public void process(JsonNode body) throws IOException, PollSqsWorkerBadRequestException {
+    public void process(JsonNode body) throws IOException, PollSqsWorkerBadRequestException, InterruptedException {
         BridgeReporterRequest request;
         try {
             request = DefaultObjectMapper.INSTANCE.treeToValue(body, BridgeReporterRequest.class);
@@ -72,8 +71,8 @@ public class BridgeReporterProcessor {
                 Map<String, Integer> reportData = new HashMap<>();
                 String studyId = studySummary.getIdentifier();
 
-                // get all uploads for this studyid, differentiating by scheduleType
-                List<Upload> uploadsForStudy = getUploadsForStudyHelper(studyId, startDateTime, endDateTime);
+                // get all uploads for this studyid
+                List<Upload> uploadsForStudy = bridgeHelper.getUploadsForStudy(studyId, startDateTime, endDateTime);
 
                 // aggregate and grouping by upload status
                 uploadsForStudy.stream()
@@ -95,32 +94,5 @@ public class BridgeReporterProcessor {
                     " seconds for hash[scheduler]=" + scheduler + ", scheduleType=" + scheduleType + ", startDate=" +
                     startDateTime + ",endDate=" + endDateTime);
         }
-    }
-
-
-    /**
-     * Helper method to call getUploadsForStudy distinguishing by daily or weekly
-     */
-    private List<Upload> getUploadsForStudyHelper(String studyId, DateTime startDateTime, DateTime endDateTime)
-            throws IOException {
-        List<Upload> uploadList = new ArrayList<>();
-
-        if (Days.daysBetween(startDateTime, endDateTime).isLessThan(Days.days(1))) {
-            uploadList = bridgeHelper.getUploadsForStudy(studyId, startDateTime, endDateTime);
-        } else {
-            while (startDateTime.isBefore(endDateTime)) {
-                uploadList.addAll(bridgeHelper.getUploadsForStudy(studyId, startDateTime,
-                        startDateTime.plusDays(1).minusMillis(1)));
-                startDateTime = startDateTime.plusDays(1);
-                // sleep for a while for ddb to meet read capacity
-                try {
-                    TimeUnit.MILLISECONDS.sleep(500);
-                } catch (InterruptedException e) {
-                    LOG.error("InterruptedException occurred for thread sleep", e);
-                }
-            }
-        }
-
-        return uploadList;
     }
 }
