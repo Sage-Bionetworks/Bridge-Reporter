@@ -1,10 +1,15 @@
 package org.sagebionetworks.bridge.reporter.request;
 
+import java.util.EnumSet;
+
 import org.sagebionetworks.bridge.sqs.PollSqsWorkerBadRequestException;
 
 public enum ReportScheduleName {
     DAILY("DAILY"),
-    WEEKLY("WEEKLY");
+    WEEKLY("WEEKLY"),
+    DAILY_SIGNUPS("DAILY_SIGNUPS");
+    
+    private static final EnumSet<ReportScheduleName> UPLOAD_REPORTS = EnumSet.of(DAILY,WEEKLY);
 
     private final String name;
 
@@ -16,7 +21,10 @@ public enum ReportScheduleName {
         return this.name;
     }
 
-    public String getSuffix() throws PollSqsWorkerBadRequestException {
-        return "-" + this.name().toLowerCase() + "-upload-report";
+    public String getSuffix() {
+        // Upload reports were initially assumed, so relax this for future reports
+        return (UPLOAD_REPORTS.contains(this)) ?
+            ("-" + this.name().toLowerCase() + "-upload-report") :
+            ("-" + this.name().toLowerCase() + "-report");
     }
 }

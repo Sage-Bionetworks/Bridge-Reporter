@@ -72,7 +72,7 @@ public class BridgeReporterRequestTest {
 
     @Test(expectedExceptions = IllegalStateException.class)
     public void startDateAfterEndDate() {
-        BridgeReporterRequest request = new BridgeReporterRequest.Builder().withScheduler(TEST_SCHEDULER)
+        new BridgeReporterRequest.Builder().withScheduler(TEST_SCHEDULER)
                 .withScheduleType(TEST_SCHEDULE_TYPE)
                 .withStartDateTime(TEST_END_DATETIME)
                 .withEndDateTime(TEST_START_DATETIME).build();
@@ -105,5 +105,17 @@ public class BridgeReporterRequestTest {
         assertEquals(jsonMap.get("scheduleType"), "DAILY");
         assertEquals(jsonMap.get("startDateTime"), "2016-10-19T00:00:00.000Z");
         assertEquals(jsonMap.get("endDateTime"), "2016-10-20T23:59:59.000Z");
+    }
+    
+    @Test
+    public void deserializeDailySignupsRequest() throws Exception {
+        String jsonText = "{\n" +
+                "   \"scheduler\":\"test-scheduler\",\n" +
+                "   \"scheduleType\":\"DAILY_SIGNUPS\",\n" +
+                "   \"startDateTime\":\"2016-10-19T00:00:00.000Z\",\n" +
+                "   \"endDateTime\":\"2016-10-20T23:59:59.000Z\"\n" +
+                "}";
+        BridgeReporterRequest request = DefaultObjectMapper.INSTANCE.readValue(jsonText, BridgeReporterRequest.class);
+        assertEquals(request.getScheduleType(), ReportScheduleName.DAILY_SIGNUPS);
     }
 }

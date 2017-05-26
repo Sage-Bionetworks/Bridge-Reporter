@@ -10,5 +10,6 @@ public class ReportScheduleNameTest {
     public void valueOf() {
         assertEquals(ReportScheduleName.valueOf("DAILY"), ReportScheduleName.DAILY);
         assertEquals(ReportScheduleName.valueOf("WEEKLY"), ReportScheduleName.WEEKLY);
+        assertEquals(ReportScheduleName.valueOf("DAILY_SIGNUPS"), ReportScheduleName.DAILY_SIGNUPS);
     }
 }

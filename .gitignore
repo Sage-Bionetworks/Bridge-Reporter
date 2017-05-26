@@ -3,6 +3,9 @@
 *.iml
 target
 pom.xml.versionsBackup
+.classpath
+.project
+test-output/
 
 # Elastic Beanstalk Files
 .elasticbeanstalk/*

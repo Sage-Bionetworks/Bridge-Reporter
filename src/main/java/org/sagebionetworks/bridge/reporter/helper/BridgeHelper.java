@@ -18,6 +18,7 @@ import org.sagebionetworks.bridge.rest.exceptions.NotAuthenticatedException;
 import org.sagebionetworks.bridge.rest.model.ReportData;
 import org.sagebionetworks.bridge.rest.model.SignIn;
 import org.sagebionetworks.bridge.rest.model.Study;
+import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.rest.model.Upload;
 import org.sagebionetworks.bridge.rest.model.UploadList;
 
@@ -65,10 +66,12 @@ public class BridgeHelper {
         List<Upload> retList = new ArrayList<>();
         String offsetKey = null;
 
+        ForWorkersApi workersApi = bridgeClientManager.getClient(ForWorkersApi.class);
         do {
+            
             final String temOffsetKey = offsetKey;
-            UploadList retBody = sessionHelper(() -> bridgeClientManager.getClient(ForWorkersApi.class).getUploadsInStudy(studyId,
-                    startDateTime, endDateTime, MAX_PAGE_SIZE, temOffsetKey).execute().body());
+            UploadList retBody = sessionHelper(() -> workersApi.getUploadsInStudy(studyId, startDateTime, 
+                    endDateTime, MAX_PAGE_SIZE, temOffsetKey).execute().body());
             retList.addAll(retBody.getItems());
             offsetKey = retBody.getOffsetKey();
             // sleep a second
@@ -79,6 +82,16 @@ public class BridgeHelper {
             }
         } while (offsetKey != null);
 
+        return retList;
+    }
+    
+    public List<StudyParticipant> getParticipantsForStudy(String studyId, DateTime startDateTime, DateTime endDateTime)
+            throws IOException {
+        List<StudyParticipant> retList = new ArrayList<>();
+        
+        // And here we are stymied because there's no worker API to get the participants in a study, and until
+        // one is added, we cannot generate this report.
+        
         return retList;
     }
 
