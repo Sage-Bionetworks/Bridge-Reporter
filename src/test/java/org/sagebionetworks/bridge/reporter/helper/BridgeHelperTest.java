@@ -207,7 +207,6 @@ public class BridgeHelperTest {
         // Set up Bridge Helper
         BridgeHelper bridgeHelper = new BridgeHelper();
         bridgeHelper.setBridgeClientManager(mockClientManager);
-        bridgeHelper.setBridgeCredentials(TEST_SIGN_IN);
 
         // execute
         for (int i = 0; i < 3; i++) {

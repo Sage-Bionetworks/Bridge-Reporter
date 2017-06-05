@@ -14,7 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.sagebionetworks.bridge.reporter.helper.BridgeHelper;
-import org.sagebionetworks.bridge.reporter.request.ReportScheduleName;
+import org.sagebionetworks.bridge.reporter.request.ReportType;
 import org.sagebionetworks.bridge.rest.model.ReportData;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.Upload;
@@ -27,7 +27,7 @@ public class UploadsReportGenerator implements ReportGenerator {
         DateTime startDateTime = request.getStartDateTime();
         DateTime endDateTime = request.getEndDateTime();
         String scheduler = request.getScheduler();
-        ReportScheduleName scheduleType = request.getScheduleType();
+        ReportType scheduleType = request.getScheduleType();
 
         String reportId = scheduler + scheduleType.getSuffix();
         

@@ -22,10 +22,11 @@ import org.testng.annotations.Test;
 import org.sagebionetworks.bridge.json.DefaultObjectMapper;
 import org.sagebionetworks.bridge.reporter.Tests;
 import org.sagebionetworks.bridge.reporter.helper.BridgeHelper;
-import org.sagebionetworks.bridge.reporter.request.ReportScheduleName;
+import org.sagebionetworks.bridge.reporter.request.ReportType;
 import org.sagebionetworks.bridge.rest.RestUtils;
 import org.sagebionetworks.bridge.rest.model.ReportData;
 import org.sagebionetworks.bridge.rest.model.Study;
+import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.rest.model.Upload;
 import org.sagebionetworks.bridge.sqs.PollSqsWorkerBadRequestException;
 
@@ -35,9 +36,10 @@ public class BridgeReporterProcessorTest {
     private static final String TEST_STUDY_ID_2 = "parkinson";
     private static final String TEST_REPORT_ID = "test-scheduler-daily-upload-report";
     private static final String TEST_REPORT_ID_WEEKLY = "test-scheduler-weekly-upload-report";
+    private static final String TEST_REPORT_SIGNUP = "test-scheduler-daily-signups-report";
     private static final String TEST_SCHEDULER = "test-scheduler";
-    private static final ReportScheduleName TEST_SCHEDULE_TYPE = ReportScheduleName.DAILY;
-    private static final ReportScheduleName TEST_SCHEDULE_TYPE_WEEKLY = ReportScheduleName.WEEKLY;
+    private static final ReportType TEST_SCHEDULE_TYPE = ReportType.DAILY;
+    private static final ReportType TEST_SCHEDULE_TYPE_WEEKLY = ReportType.WEEKLY;
     private static final DateTime TEST_START_DATETIME = DateTime.parse("2016-10-19T00:00:00Z");
     private static final DateTime TEST_END_DATETIME = DateTime.parse("2016-10-19T23:59:59Z");
 
@@ -53,6 +55,11 @@ public class BridgeReporterProcessorTest {
     private static final ReportData TEST_REPORT_2 = new ReportData().date(TEST_START_DATETIME.toLocalDate()).data(
             TEST_REPORT_DATA_2);
 
+    private static final Map<String, Integer> SIGNUP_REPORT_DATA = ImmutableMap.<String, Integer> builder()
+            .put("all_qualified_researchers", 1).put("no_sharing", 2).put("unverified", 1).put("enabled", 2).build();
+    private static final ReportData SIGNUP_REPORT = new ReportData().date(TEST_START_DATETIME.toLocalDate())
+            .data(SIGNUP_REPORT_DATA);
+    
     private static final Study TEST_STUDY_SUMMARY = new Study().identifier(TEST_STUDY_ID).name(TEST_STUDY_ID);
     private static final Study TEST_STUDY_SUMMARY_2 = new Study().identifier(TEST_STUDY_ID_2).name(TEST_STUDY_ID_2);
     private static final List<Study> TEST_STUDY_SUMMARY_LIST = ImmutableList.of(TEST_STUDY_SUMMARY);
@@ -77,35 +84,57 @@ public class BridgeReporterProcessorTest {
             "'completedOn':'2016-07-26T22:43:10.468Z','completedBy':'s3_worker',"+
             "'uploadDate':'2016-10-10','uploadId':'DEF','validationMessageList':"+
             "['message 1','message 2'],'schemaId':'schemaId','schemaRevision':2,'type':'Upload'}");
+    
+    private static final String PARTICIPANT_1 = Tests.unescapeJson("{" +
+            "'id':'user1'," +
+            "'sharingScope':'no_sharing'," +
+            "'status':'enabled'" +
+            "}");
 
+    private static final String PARTICIPANT_2 = Tests.unescapeJson("{" +
+            "'id':'user2'," +
+            "'sharingScope':'all_qualified_researchers'," +
+            "'status':'enabled'" +
+            "}");
 
-    private static final String REQUEST_JSON_TEXT = "{\n" +
-            "   \"scheduler\":\"" + TEST_SCHEDULER +"\",\n" +
-            "   \"scheduleType\":\"" + TEST_SCHEDULE_TYPE.toString() + "\",\n" +
-            "   \"startDateTime\":\"2016-10-19T00:00:00Z\",\n" +
-            "   \"endDateTime\":\"2016-10-19T23:59:59Z\"\n" +
-            "}";
+    private static final String PARTICIPANT_3 = Tests.unescapeJson("{" +
+            "'id':'user3'," +
+            "'sharingScope':'no_sharing'," +
+            "'status':'unverified'" +
+            "}");
 
-    private static final String REQUEST_JSON_TEXT_WEEKLY = "{\n" +
-            "   \"scheduler\":\"" + TEST_SCHEDULER +"\",\n" +
-            "   \"scheduleType\":\"" + TEST_SCHEDULE_TYPE_WEEKLY.toString() + "\",\n" +
-            "   \"startDateTime\":\"2016-10-19T00:00:00Z\",\n" +
-            "   \"endDateTime\":\"2016-10-25T23:59:59Z\"\n" +
-            "}";
+    private static final String REQUEST_JSON_TEXT = Tests.unescapeJson("{" +
+            "'scheduler':'" + TEST_SCHEDULER +"'," +
+            "'scheduleType':'" + TEST_SCHEDULE_TYPE.toString() + "'," +
+            "'startDateTime':'2016-10-19T00:00:00Z'," +
+            "'endDateTime':'2016-10-19T23:59:59Z'}");
 
-    private static final String REQUEST_JSON_TEXT_INVALID = "{\n" +
-            "   \"scheduler\":\"" + TEST_SCHEDULER +"\",\n" +
-            "   \"scheduleType\":\"Invalid_Schedule_Type\",\n" +
-            "   \"startDateTime\":\"2016-10-19T00:00:00Z\",\n" +
-            "   \"endDateTime\":\"2016-10-20T23:59:59Z\"\n" +
-            "}";
+    private static final String REQUEST_JSON_TEXT_WEEKLY = Tests.unescapeJson("{" +
+            "'scheduler':'" + TEST_SCHEDULER +"'," +
+            "'scheduleType':'" + TEST_SCHEDULE_TYPE_WEEKLY.toString() + "'," +
+            "'startDateTime':'2016-10-19T00:00:00Z'," +
+            "'endDateTime':'2016-10-25T23:59:59Z'}");
+
+    private static final String REQUEST_JSON_TEXT_INVALID = Tests.unescapeJson("{" +
+            "'scheduler':'" + TEST_SCHEDULER +"'," +
+            "'scheduleType':'Invalid_Schedule_Type'," +
+            "'startDateTime':'2016-10-19T00:00:00Z'," +
+            "'endDateTime':'2016-10-20T23:59:59Z'}");
+    
+    private static final String REQUEST_JSON_DAILY_SIGNUPS = Tests.unescapeJson("{" +
+            "'scheduler':'" + TEST_SCHEDULER +"'," +
+            "'scheduleType':'" + ReportType.DAILY_SIGNUPS.toString() + "'," +
+            "'startDateTime':'2016-10-19T00:00:00Z'," +
+            "'endDateTime':'2016-10-19T23:59:59Z'}");
 
     private JsonNode requestJson;
     private JsonNode requestJsonWeekly;
     private JsonNode requestJsonInvalid;
+    private JsonNode requestJsonDailySignUps;
 
     private List<Upload> testUploads;
     private List<Upload> testUploads2;
+    private List<StudyParticipant> testParticipants;
 
     private BridgeHelper mockBridgeHelper;
     private BridgeReporterProcessor processor;
@@ -115,6 +144,7 @@ public class BridgeReporterProcessorTest {
         requestJson = DefaultObjectMapper.INSTANCE.readValue(REQUEST_JSON_TEXT, JsonNode.class);
         requestJsonWeekly = DefaultObjectMapper.INSTANCE.readValue(REQUEST_JSON_TEXT_WEEKLY, JsonNode.class);
         requestJsonInvalid = DefaultObjectMapper.INSTANCE.readValue(REQUEST_JSON_TEXT_INVALID, JsonNode.class);
+        requestJsonDailySignUps = DefaultObjectMapper.INSTANCE.readValue(REQUEST_JSON_DAILY_SIGNUPS, JsonNode.class);
 
         Upload testUpload = RestUtils.GSON.fromJson(UPLOAD_TEXT, Upload.class);
         Upload testUpload2 = RestUtils.GSON.fromJson(UPLOAD_TEXT_2, Upload.class);
@@ -122,6 +152,11 @@ public class BridgeReporterProcessorTest {
 
         testUploads = ImmutableList.of(testUpload);
         testUploads2 = ImmutableList.of(testUpload, testUpload2, testUpload3);
+        
+        StudyParticipant user1 = RestUtils.GSON.fromJson(PARTICIPANT_1, StudyParticipant.class);
+        StudyParticipant user2 = RestUtils.GSON.fromJson(PARTICIPANT_2, StudyParticipant.class);
+        StudyParticipant user3 = RestUtils.GSON.fromJson(PARTICIPANT_3, StudyParticipant.class);
+        testParticipants = ImmutableList.of(user1, user2, user3);
     }
 
     @BeforeMethod
@@ -203,5 +238,22 @@ public class BridgeReporterProcessorTest {
     public void testInvalidScheduleType() throws Exception {
         // execute
         processor.process(requestJsonInvalid);
+    }
+    
+    @Test
+    public void testDailySignIns() throws Exception {
+        mockBridgeHelper = mock(BridgeHelper.class);
+        when(mockBridgeHelper.getAllStudiesSummary()).thenReturn(TEST_STUDY_SUMMARY_LIST);
+        when(mockBridgeHelper.getParticipantsForStudy(TEST_STUDY_ID, TEST_START_DATETIME, TEST_END_DATETIME))
+                .thenReturn(testParticipants);
+        
+        processor = new BridgeReporterProcessor();
+        processor.setBridgeHelper(mockBridgeHelper);
+        
+        processor.process(requestJsonDailySignUps);
+        
+        verify(mockBridgeHelper).getAllStudiesSummary();
+        verify(mockBridgeHelper).getParticipantsForStudy(TEST_STUDY_ID, TEST_START_DATETIME, TEST_END_DATETIME);
+        verify(mockBridgeHelper).saveReportForStudy(TEST_STUDY_ID, TEST_REPORT_SIGNUP, SIGNUP_REPORT);
     }
 }

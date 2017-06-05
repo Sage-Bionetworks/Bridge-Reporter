@@ -2,7 +2,8 @@ package org.sagebionetworks.bridge.reporter.worker;
 
 import org.joda.time.DateTime;
 import org.sagebionetworks.bridge.json.DefaultObjectMapper;
-import org.sagebionetworks.bridge.reporter.request.ReportScheduleName;
+import org.sagebionetworks.bridge.reporter.request.ReportType;
+
 import org.testng.annotations.Test;
 
 import java.util.Map;
@@ -12,7 +13,7 @@ import static org.testng.Assert.assertEquals;
 @SuppressWarnings("unchecked")
 public class BridgeReporterRequestTest {
     private static final String TEST_SCHEDULER = "test-scheduler";
-    private static final ReportScheduleName TEST_SCHEDULE_TYPE = ReportScheduleName.DAILY;
+    private static final ReportType TEST_SCHEDULE_TYPE = ReportType.DAILY;
     private static final DateTime TEST_START_DATETIME = DateTime.parse("2016-10-19T00:00:00Z");
     private static final DateTime TEST_END_DATETIME = DateTime.parse("2016-10-20T23:59:59Z");
 
@@ -116,6 +117,6 @@ public class BridgeReporterRequestTest {
                 "   \"endDateTime\":\"2016-10-20T23:59:59.000Z\"\n" +
                 "}";
         BridgeReporterRequest request = DefaultObjectMapper.INSTANCE.readValue(jsonText, BridgeReporterRequest.class);
-        assertEquals(request.getScheduleType(), ReportScheduleName.DAILY_SIGNUPS);
+        assertEquals(request.getScheduleType(), ReportType.DAILY_SIGNUPS);
     }
 }
