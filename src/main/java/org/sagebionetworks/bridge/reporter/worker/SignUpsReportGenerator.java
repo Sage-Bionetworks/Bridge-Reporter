@@ -46,13 +46,17 @@ public class SignUpsReportGenerator implements ReportGenerator {
             }
         }
         
-        Map<String, Integer> reportData = new HashMap<>();
+        Map<String, Integer> statusData = new HashMap<>();
         for (AccountStatus status : statuses) {
-            reportData.put(status.name().toLowerCase(), statuses.count(status));
+            statusData.put(status.name().toLowerCase(), statuses.count(status));
         }
+        Map<String, Integer> sharingData = new HashMap<>();
         for (SharingScope scope : sharingScopes) {
-            reportData.put(scope.name().toLowerCase(), sharingScopes.count(scope));
+            sharingData.put(scope.name().toLowerCase(), sharingScopes.count(scope));
         }
+        Map<String, Map<String,Integer>> reportData = new HashMap<>();
+        reportData.put("bySharing", sharingData);
+        reportData.put("byStatus", statusData);
 
         return new Report.Builder().withStudyId(studyId).withReportId(reportId).withDate(startDate.toLocalDate())
                 .withReportData(reportData).build();
