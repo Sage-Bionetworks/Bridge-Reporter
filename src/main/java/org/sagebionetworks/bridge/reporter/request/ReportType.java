@@ -3,8 +3,8 @@ package org.sagebionetworks.bridge.reporter.request;
 import java.util.EnumSet;
 
 public enum ReportType {
-    DAILY("DAILY"),
-    WEEKLY("WEEKLY"),
+    DAILY("DAILY"), // aka DAILY_UPLOADS 
+    WEEKLY("WEEKLY"), // aka WEEKLY_UPLOADS
     DAILY_SIGNUPS("DAILY_SIGNUPS");
     
     private static final EnumSet<ReportType> UPLOAD_REPORTS = EnumSet.of(DAILY,WEEKLY);
@@ -20,9 +20,10 @@ public enum ReportType {
     }
 
     public String getSuffix() {
-        // Upload reports were initially assumed, so relax this for future reports
-        return (UPLOAD_REPORTS.contains(this)) ?
-            ("-" + this.name().toLowerCase() + "-upload-report") :
-            ("-" + this.name().replaceAll("_", "-").toLowerCase() + "-report");
+        // Upload reports were initially assumed, account for that here
+        if (UPLOAD_REPORTS.contains(this)) {
+            return "-" + this.name().toLowerCase() + "-upload-report";
+        }
+        return "-" + this.name().replaceAll("_", "-").toLowerCase() + "-report";
     }
 }

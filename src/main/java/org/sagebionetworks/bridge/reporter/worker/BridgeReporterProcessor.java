@@ -2,6 +2,7 @@ package org.sagebionetworks.bridge.reporter.worker;
 
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Component;
 import org.sagebionetworks.bridge.json.DefaultObjectMapper;
 import org.sagebionetworks.bridge.reporter.helper.BridgeHelper;
 import org.sagebionetworks.bridge.reporter.request.ReportType;
+import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.sqs.PollSqsWorkerBadRequestException;
 
 /**
@@ -29,11 +31,13 @@ public class BridgeReporterProcessor {
     private static final Logger LOG = LoggerFactory.getLogger(BridgeReporterProcessor.class);
     
     private static final ReportGenerator UPLOADS_GENERATOR = new UploadsReportGenerator();
+    private static final SignUpsReportGenerator SIGNUPS_GENERATOR = new SignUpsReportGenerator();
 
     private static final Map<ReportType, ReportGenerator> GENERATORS = new ImmutableMap.Builder<ReportType, ReportGenerator>()
             .put(ReportType.DAILY, UPLOADS_GENERATOR)
             .put(ReportType.WEEKLY, UPLOADS_GENERATOR)
-            .put(ReportType.DAILY_SIGNUPS, new SignUpsReportGenerator())
+            .put(ReportType.DAILY_SIGNUPS, SIGNUPS_GENERATOR)
+            
             .build();
 
     private BridgeHelper bridgeHelper;
@@ -52,19 +56,28 @@ public class BridgeReporterProcessor {
         DateTime endDateTime = request.getEndDateTime();
         String scheduler = request.getScheduler();
         ReportType scheduleType = request.getScheduleType();
-
-        LOG.info(String.format("Received request for hash[scheduler]=%s, scheduleType=%s, startDate=%s, endDate=%s", 
-                scheduler, scheduleType, startDateTime, endDateTime));
+        ReportGenerator generator = GENERATORS.get(scheduleType);
+        
+        LOG.info("Received request for hash[scheduler]=" + scheduler + ", scheduleType=" + scheduleType + ", startDate="
+                + startDateTime + ", endDate=" + endDateTime + ", report generator="
+                + generator.getClass().getSimpleName());
 
         Stopwatch requestStopwatch = Stopwatch.createStarted();
         try {
-            
-            ReportGenerator generator = GENERATORS.get(scheduleType);
-            generator.generate(request, bridgeHelper);
-            
+            List<Study> studySummaries = bridgeHelper.getAllStudiesSummary();
+            for (Study study : studySummaries) {
+                Report report = generator.generate(request, study, bridgeHelper);
+                
+                bridgeHelper.saveReportForStudy(report);
+                
+                LOG.info("Saved uploads report for hash[studyId]=" + report.getStudyId() + ", scheduleType=" + scheduleType
+                        + ", startDate=" + startDateTime + ",endDate=" + endDateTime + ", reportId=" + report.getReportId()
+                        + ", reportData=" + report.getData().toString());
+            }
         } finally {
-            LOG.info(String.format("Request took %s seconds for hash[scheduler]=%s, scheduleType=%s, startDate=%s, endDate=%s", 
-                    requestStopwatch.elapsed(TimeUnit.SECONDS), scheduler, scheduleType, startDateTime, endDateTime));
+            LOG.info("Request took " + requestStopwatch.elapsed(TimeUnit.SECONDS) + " seconds for hash[scheduler]="
+                    + scheduler + ", scheduleType=" + scheduleType + ", startDate=" + startDateTime + ", endDate="
+                    + endDateTime);
         }
     }
 

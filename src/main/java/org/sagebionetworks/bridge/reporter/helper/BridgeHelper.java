@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import org.sagebionetworks.bridge.reporter.worker.Report;
 import org.sagebionetworks.bridge.rest.ClientManager;
 import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
@@ -81,7 +82,6 @@ public class BridgeHelper {
             throws IOException {
         List<StudyParticipant> retList = new ArrayList<>();
         
-        // Should no longer need the sessionHelper, automatic re-authentication is built into the rest library. 
         ForWorkersApi workersApi = bridgeClientManager.getClient(ForWorkersApi.class);
         
         int offset = 0;
@@ -92,7 +92,6 @@ public class BridgeHelper {
                 StudyParticipant participant = workersApi.getParticipantInStudy(studyId, summary.getId()).execute().body();
                 retList.add(participant);
             }
-            LOG.debug("Offset: " + summaries.getOffsetBy());
             offset = (summaries.getOffsetBy() != null) ? summaries.getOffsetBy().intValue() : -1;
         } while(offset > 0);
         
@@ -102,8 +101,10 @@ public class BridgeHelper {
     /**
      * Helper method to save report for specified study with report id and report data
      */
-    public void saveReportForStudy(String studyId, String reportId, ReportData reportData) throws IOException {
-        bridgeClientManager.getClient(ForWorkersApi.class).saveReportForStudy(studyId, reportId, reportData).execute();
+    public void saveReportForStudy(Report report) throws IOException {
+        ReportData reportData = new ReportData().date(report.getDate()).data(report.getData());
+        bridgeClientManager.getClient(ForWorkersApi.class)
+                .saveReportForStudy(report.getStudyId(), report.getReportId(), reportData).execute();
     }
 
 }

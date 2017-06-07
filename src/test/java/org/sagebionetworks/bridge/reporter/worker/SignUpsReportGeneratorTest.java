@@ -1,5 +1,8 @@
 package org.sagebionetworks.bridge.reporter.worker;
 
+import static org.testng.AssertJUnit.assertNotNull;
+import static org.testng.AssertJUnit.assertEquals;
+
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -33,10 +36,13 @@ public class SignUpsReportGeneratorTest {
         when(bridgeHelper.getAllStudiesSummary()).thenReturn(Lists.newArrayList(study));
         
         SignUpsReportGenerator generator = new SignUpsReportGenerator();
+        Report report = generator.generate(request, study, bridgeHelper);
         
-        generator.generate(request, bridgeHelper);
+        assertEquals(STUDY_ID, report.getStudyId());
+        assertEquals("test-scheduler-daily-signups-report", report.getReportId());
+        assertEquals("2017-06-09", report.getDate().toString());
+        assertNotNull(report.getData());
         
-        verify(bridgeHelper).getAllStudiesSummary();
         verify(bridgeHelper).getParticipantsForStudy(STUDY_ID, START_DATE, END_DATE);
     }
 }
