@@ -32,6 +32,7 @@ public class BridgeHelper {
     // match read capacity in ddb table
     static final int MAX_PAGE_SIZE = 10;
     private static final long THREAD_SLEEP_INTERVAL = 1000L;
+    private static final int PARTICIPANT_PAGE_SIZE = 100;
 
     private ClientManager bridgeClientManager;
 
@@ -67,12 +68,7 @@ public class BridgeHelper {
                     .body();
             retList.addAll(retBody.getItems());
             offsetKey = retBody.getOffsetKey();
-            // sleep a second
-            try {
-                Thread.sleep(THREAD_SLEEP_INTERVAL);
-            } catch (InterruptedException e) {
-                LOG.warn("The thread for get uploads was being interrupted.", e);
-            }
+            doSleep();
         } while (offsetKey != null);
 
         return retList;
@@ -87,15 +83,26 @@ public class BridgeHelper {
         int offset = 0;
         do {
             AccountSummaryList summaries = workersApi
-                    .getParticipantsInStudy(studyId, 0, 100, null, startDateTime, endDateTime).execute().body();
+                    .getParticipantsInStudy(studyId, offset, PARTICIPANT_PAGE_SIZE, null, startDateTime, endDateTime)
+                    .execute().body();
             for (AccountSummary summary : summaries.getItems()) {
                 StudyParticipant participant = workersApi.getParticipantInStudy(studyId, summary.getId()).execute().body();
                 retList.add(participant);
+                doSleep();
             }
             offset = (summaries.getOffsetBy() != null) ? summaries.getOffsetBy().intValue() : -1;
         } while(offset > 0);
         
         return retList;
+    }
+    
+    private void doSleep() {
+        // sleep a second
+        try {
+            Thread.sleep(THREAD_SLEEP_INTERVAL);
+        } catch (InterruptedException e) {
+            LOG.warn("The thread for get uploads was being interrupted.", e);
+        }
     }
 
     /**

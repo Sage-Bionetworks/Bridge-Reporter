@@ -11,7 +11,7 @@ public class Report {
     private final LocalDate date;
     private final Object data;
     
-    public Report(String studyId, String reportId, LocalDate date, Object data) {
+    private Report(String studyId, String reportId, LocalDate date, Object data) {
         this.studyId = studyId;
         this.reportId = reportId;
         this.date = date;

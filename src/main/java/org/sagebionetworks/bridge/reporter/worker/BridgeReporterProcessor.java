@@ -8,7 +8,6 @@ import java.util.concurrent.TimeUnit;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.base.Stopwatch;
-import com.google.common.collect.ImmutableMap;
 
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
@@ -30,22 +29,18 @@ import org.sagebionetworks.bridge.sqs.PollSqsWorkerBadRequestException;
 public class BridgeReporterProcessor {
     private static final Logger LOG = LoggerFactory.getLogger(BridgeReporterProcessor.class);
     
-    private static final ReportGenerator UPLOADS_GENERATOR = new UploadsReportGenerator();
-    private static final SignUpsReportGenerator SIGNUPS_GENERATOR = new SignUpsReportGenerator();
-
-    private static final Map<ReportType, ReportGenerator> GENERATORS = new ImmutableMap.Builder<ReportType, ReportGenerator>()
-            .put(ReportType.DAILY, UPLOADS_GENERATOR)
-            .put(ReportType.WEEKLY, UPLOADS_GENERATOR)
-            .put(ReportType.DAILY_SIGNUPS, SIGNUPS_GENERATOR)
-            
-            .build();
-
+    private Map<ReportType, ReportGenerator> generatorMap;
     private BridgeHelper bridgeHelper;
     
     @Autowired
     @Qualifier("ReporterHelper")
     public final void setBridgeHelper(BridgeHelper bridgeHelper) {
         this.bridgeHelper = bridgeHelper;
+    }
+    
+    @Autowired
+    public final void setGeneratorMap(Map<ReportType, ReportGenerator> generatorMap) {
+        this.generatorMap = generatorMap;
     }
 
     /** Process the passed sqs msg as JsonNode. */
@@ -56,7 +51,7 @@ public class BridgeReporterProcessor {
         DateTime endDateTime = request.getEndDateTime();
         String scheduler = request.getScheduler();
         ReportType scheduleType = request.getScheduleType();
-        ReportGenerator generator = GENERATORS.get(scheduleType);
+        ReportGenerator generator = generatorMap.get(scheduleType);
         
         LOG.info("Received request for hash[scheduler]=" + scheduler + ", scheduleType=" + scheduleType + ", startDate="
                 + startDateTime + ", endDate=" + endDateTime + ", report generator="
@@ -66,7 +61,7 @@ public class BridgeReporterProcessor {
         try {
             List<Study> studySummaries = bridgeHelper.getAllStudiesSummary();
             for (Study study : studySummaries) {
-                Report report = generator.generate(request, study, bridgeHelper);
+                Report report = generator.generate(request, study);
                 
                 bridgeHelper.saveReportForStudy(report);
                 

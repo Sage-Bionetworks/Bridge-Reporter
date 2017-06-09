@@ -9,18 +9,26 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.joda.time.DateTime;
-import org.joda.time.LocalDate;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import org.sagebionetworks.bridge.reporter.helper.BridgeHelper;
 import org.sagebionetworks.bridge.reporter.request.ReportType;
-import org.sagebionetworks.bridge.rest.model.ReportData;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.Upload;
 
 public class UploadsReportGenerator implements ReportGenerator {
     
+    private BridgeHelper bridgeHelper;
+    
+    @Autowired
+    @Qualifier("ReporterHelper")
+    public final void setBridgeHelper(BridgeHelper bridgeHelper) {
+        this.bridgeHelper = bridgeHelper;
+    }
+
     @Override
-    public Report generate(BridgeReporterRequest request, Study study, BridgeHelper bridgeHelper) throws IOException {
+    public Report generate(BridgeReporterRequest request, Study study) throws IOException {
         DateTime startDateTime = request.getStartDateTime();
         DateTime endDateTime = request.getEndDateTime();
         String scheduler = request.getScheduler();
@@ -39,11 +47,7 @@ public class UploadsReportGenerator implements ReportGenerator {
                 .collect(Collectors.groupingBy(Upload::getStatus, counting()))
                 .forEach((status, cnt) -> data.put(status.toString(), cnt.intValue()));
 
-        // set date and reportData
-        LocalDate startDate = startDateTime.toLocalDate();
-        ReportData reportData = new ReportData().date(startDate).data(data);
-
-        return new Report.Builder().withStudyId(studyId).withReportId(reportId).withDate(startDate)
-                .withReportData(reportData).build();
+        return new Report.Builder().withStudyId(studyId).withReportId(reportId).withDate(startDateTime.toLocalDate())
+                .withReportData(data).build();
     }
 }

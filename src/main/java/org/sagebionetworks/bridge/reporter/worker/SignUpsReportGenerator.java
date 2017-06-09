@@ -6,6 +6,9 @@ import java.util.List;
 import java.util.Map;
 
 import org.joda.time.DateTime;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
 
 import org.sagebionetworks.bridge.reporter.helper.BridgeHelper;
 import org.sagebionetworks.bridge.reporter.request.ReportType;
@@ -21,10 +24,19 @@ import com.google.common.collect.Multiset;
  * Generate a report of signups by account statuses.
  *
  */
+@Component
 public class SignUpsReportGenerator implements ReportGenerator {
     
+    private BridgeHelper bridgeHelper;
+    
+    @Autowired
+    @Qualifier("ReporterHelper")
+    public final void setBridgeHelper(BridgeHelper bridgeHelper) {
+        this.bridgeHelper = bridgeHelper;
+    }
+    
     @Override
-    public Report generate(BridgeReporterRequest request, Study study, BridgeHelper bridgeHelper) throws IOException {
+    public Report generate(BridgeReporterRequest request, Study study) throws IOException {
         DateTime startDate = request.getStartDateTime();
         DateTime endDate = request.getEndDateTime();
         String scheduler = request.getScheduler();

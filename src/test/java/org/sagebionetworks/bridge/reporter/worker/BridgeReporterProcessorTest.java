@@ -1,6 +1,6 @@
 package org.sagebionetworks.bridge.reporter.worker;
 
-import static org.testng.AssertJUnit.assertNotNull;
+import static org.testng.AssertJUnit.assertTrue;
 import static org.testng.AssertJUnit.assertEquals;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
@@ -11,9 +11,12 @@ import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+
 import org.joda.time.DateTime;
 import org.mockito.ArgumentCaptor;
 import org.testng.annotations.BeforeClass;
@@ -25,6 +28,7 @@ import org.sagebionetworks.bridge.reporter.Tests;
 import org.sagebionetworks.bridge.reporter.helper.BridgeHelper;
 import org.sagebionetworks.bridge.reporter.request.ReportType;
 import org.sagebionetworks.bridge.rest.RestUtils;
+import org.sagebionetworks.bridge.rest.model.ReportData;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.rest.model.Upload;
@@ -39,7 +43,21 @@ public class BridgeReporterProcessorTest {
     private static final ReportType TEST_SCHEDULE_TYPE_WEEKLY = ReportType.WEEKLY;
     private static final DateTime TEST_START_DATETIME = DateTime.parse("2016-10-19T00:00:00Z");
     private static final DateTime TEST_END_DATETIME = DateTime.parse("2016-10-19T23:59:59Z");
+    private static final String TEST_REPORT_ID = "test-scheduler-daily-upload-report";
+    private static final String TEST_REPORT_ID_WEEKLY = "test-scheduler-weekly-upload-report";
+    
+    private static final Map<String, Integer> TEST_REPORT_DATA = ImmutableMap.of("succeeded", 1);
+    private static final Map<String, Integer> TEST_REPORT_DATA_WEEKLY = ImmutableMap.of("succeeded", 1);
+    private static final ReportData TEST_REPORT = new ReportData().date(TEST_START_DATETIME.toLocalDate()).data(
+            TEST_REPORT_DATA);
+    private static final ReportData TEST_REPORT_WEEKLY = new ReportData().date(TEST_START_DATETIME.toLocalDate()).data(
+            TEST_REPORT_DATA_WEEKLY);
 
+    private static final Map<String, Integer> TEST_REPORT_DATA_2 = ImmutableMap.<String, Integer>builder()
+            .put("succeeded", 2).put("requested", 1).build();
+    private static final ReportData TEST_REPORT_2 = new ReportData().date(TEST_START_DATETIME.toLocalDate()).data(
+            TEST_REPORT_DATA_2);
+    
     private static final Study TEST_STUDY_SUMMARY = new Study().identifier(TEST_STUDY_ID).name(TEST_STUDY_ID);
     private static final Study TEST_STUDY_SUMMARY_2 = new Study().identifier(TEST_STUDY_ID_2).name(TEST_STUDY_ID_2);
     private static final List<Study> TEST_STUDY_SUMMARY_LIST = ImmutableList.of(TEST_STUDY_SUMMARY);
@@ -104,8 +122,8 @@ public class BridgeReporterProcessorTest {
     private static final String REQUEST_JSON_DAILY_SIGNUPS = Tests.unescapeJson("{" +
             "'scheduler':'" + TEST_SCHEDULER +"'," +
             "'scheduleType':'" + ReportType.DAILY_SIGNUPS.toString() + "'," +
-            "'startDateTime':'2016-10-19T00:00:00Z'," +
-            "'endDateTime':'2016-10-19T23:59:59Z'}");
+            "'startDateTime':'2016-10-19T00:00:00+03:00'," +
+            "'endDateTime':'2016-10-19T23:59:59+03:00'}");
 
     private JsonNode requestJson;
     private JsonNode requestJsonWeekly;
@@ -145,24 +163,45 @@ public class BridgeReporterProcessorTest {
         when(mockBridgeHelper.getAllStudiesSummary()).thenReturn(TEST_STUDY_SUMMARY_LIST);
         when(mockBridgeHelper.getUploadsForStudy(any(), any(), any())).thenReturn(testUploads);
 
+        UploadsReportGenerator uploadsGenerator = new UploadsReportGenerator();
+        uploadsGenerator.setBridgeHelper(mockBridgeHelper);
+        
+        SignUpsReportGenerator signUpsGenerator = new SignUpsReportGenerator();
+        signUpsGenerator.setBridgeHelper(mockBridgeHelper);
+        
+        Map<ReportType, ReportGenerator> generators = new ImmutableMap.Builder<ReportType, ReportGenerator>()
+                .put(ReportType.DAILY, uploadsGenerator).put(ReportType.WEEKLY, uploadsGenerator)
+                .put(ReportType.DAILY_SIGNUPS, signUpsGenerator).build();        
+        
         // set up callback
         processor = new BridgeReporterProcessor();
+        processor.setGeneratorMap(generators);
         processor.setBridgeHelper(mockBridgeHelper);
     }
 
     @Test
     public void testNormalCase() throws Exception {
+        ArgumentCaptor<Report> reportCaptor = ArgumentCaptor.forClass(Report.class);
+
         // execute
         processor.process(requestJson);
 
         // verify
         verify(mockBridgeHelper).getAllStudiesSummary();
         verify(mockBridgeHelper).getUploadsForStudy(eq(TEST_STUDY_ID), eq(TEST_START_DATETIME), eq(TEST_END_DATETIME));
-        verify(mockBridgeHelper).saveReportForStudy(any(Report.class));
+        
+        verify(mockBridgeHelper).saveReportForStudy(reportCaptor.capture());
+        Report report = reportCaptor.getAllValues().get(0);
+        assertEquals(TEST_STUDY_ID, report.getStudyId());
+        assertEquals(TEST_REPORT_ID, report.getReportId());
+        assertEquals(TEST_START_DATETIME.toLocalDate(), report.getDate());
+        assertEquals(TEST_REPORT.getData(), report.getData());
     }
 
     @Test
     public void testNormalCaseWeekly() throws Exception {
+        ArgumentCaptor<Report> reportCaptor = ArgumentCaptor.forClass(Report.class);
+
         // execute
         processor.process(requestJsonWeekly);
 
@@ -170,18 +209,20 @@ public class BridgeReporterProcessorTest {
         verify(mockBridgeHelper).getAllStudiesSummary();
         verify(mockBridgeHelper, times(1)).getUploadsForStudy(eq(TEST_STUDY_ID), any(), any());
 
-        verify(mockBridgeHelper).saveReportForStudy(any(Report.class));
+        verify(mockBridgeHelper).saveReportForStudy(reportCaptor.capture());
+        Report report = reportCaptor.getAllValues().get(0);
+        assertEquals(TEST_STUDY_ID, report.getStudyId());
+        assertEquals(TEST_REPORT_ID_WEEKLY, report.getReportId());
+        assertEquals(TEST_START_DATETIME.toLocalDate(), report.getDate());
+        assertEquals(TEST_REPORT_WEEKLY.getData(), report.getData());
     }
 
     @Test
     public void testMultipleStudies() throws Exception {
-        mockBridgeHelper = mock(BridgeHelper.class);
+        ArgumentCaptor<Report> reportCaptor = ArgumentCaptor.forClass(Report.class);
+
         when(mockBridgeHelper.getAllStudiesSummary()).thenReturn(TEST_STUDY_SUMMARY_LIST_2);
         when(mockBridgeHelper.getUploadsForStudy(any(), any(), any())).thenReturn(testUploads);
-
-        // set up callback
-        processor = new BridgeReporterProcessor();
-        processor.setBridgeHelper(mockBridgeHelper);
 
         // execute
         processor.process(requestJson);
@@ -191,19 +232,26 @@ public class BridgeReporterProcessorTest {
         verify(mockBridgeHelper).getUploadsForStudy(eq(TEST_STUDY_ID), eq(TEST_START_DATETIME), eq(TEST_END_DATETIME));
         verify(mockBridgeHelper).getUploadsForStudy(eq(TEST_STUDY_ID_2), eq(TEST_START_DATETIME), eq(TEST_END_DATETIME));
         
-        verify(mockBridgeHelper, times(2)).saveReportForStudy(any(Report.class));
+        verify(mockBridgeHelper, times(2)).saveReportForStudy(reportCaptor.capture());
+        Report report = reportCaptor.getAllValues().get(0);
+        assertEquals(TEST_STUDY_ID, report.getStudyId());
+        assertEquals(TEST_REPORT_ID, report.getReportId());
+        assertEquals(TEST_START_DATETIME.toLocalDate(), report.getDate());
+        assertEquals(TEST_REPORT.getData(), report.getData());
+        
+        report = reportCaptor.getAllValues().get(1);
+        assertEquals(TEST_STUDY_ID_2, report.getStudyId());
+        assertEquals(TEST_REPORT_ID, report.getReportId());
+        assertEquals(TEST_START_DATETIME.toLocalDate(), report.getDate());
+        assertEquals(TEST_REPORT.getData(), report.getData());
     }
 
     @Test
-    public void testMultipleuploads() throws Exception {
-        mockBridgeHelper = mock(BridgeHelper.class);
+    public void testMultipleUploads() throws Exception {
+        ArgumentCaptor<Report> reportCaptor = ArgumentCaptor.forClass(Report.class);
+        
         when(mockBridgeHelper.getAllStudiesSummary()).thenReturn(TEST_STUDY_SUMMARY_LIST);
         when(mockBridgeHelper.getUploadsForStudy(any(), any(), any())).thenReturn(testUploads2);
-
-        // set up callback
-        processor = new BridgeReporterProcessor();
-        processor.setBridgeHelper(mockBridgeHelper);
-
 
         // execute
         processor.process(requestJson);
@@ -211,7 +259,13 @@ public class BridgeReporterProcessorTest {
         // verify
         verify(mockBridgeHelper).getAllStudiesSummary();
         verify(mockBridgeHelper).getUploadsForStudy(eq(TEST_STUDY_ID), eq(TEST_START_DATETIME), eq(TEST_END_DATETIME));
-        verify(mockBridgeHelper).saveReportForStudy(any(Report.class));
+        verify(mockBridgeHelper).saveReportForStudy(reportCaptor.capture());
+        
+        Report report = reportCaptor.getValue();
+        assertEquals(TEST_STUDY_ID, report.getStudyId());
+        assertEquals(TEST_REPORT_ID, report.getReportId());
+        assertEquals(TEST_START_DATETIME.toLocalDate(), report.getDate());
+        assertEquals(TEST_REPORT_2.getData(), report.getData());
     }
 
     @Test(expectedExceptions = PollSqsWorkerBadRequestException.class)
@@ -220,28 +274,32 @@ public class BridgeReporterProcessorTest {
         processor.process(requestJsonInvalid);
     }
     
+    @SuppressWarnings("unchecked")
     @Test
     public void testDailySignIns() throws Exception {
+        DateTime startDateTime = DateTime.parse("2016-10-19T00:00:00+03:00");
+        DateTime endDateTime = DateTime.parse("2016-10-19T23:59:59+03:00");
+        
         ArgumentCaptor<Report> reportCaptor = ArgumentCaptor.forClass(Report.class);
         
-        mockBridgeHelper = mock(BridgeHelper.class);
         when(mockBridgeHelper.getAllStudiesSummary()).thenReturn(TEST_STUDY_SUMMARY_LIST);
-        when(mockBridgeHelper.getParticipantsForStudy(TEST_STUDY_ID, TEST_START_DATETIME, TEST_END_DATETIME))
+        when(mockBridgeHelper.getParticipantsForStudy(TEST_STUDY_ID, startDateTime, endDateTime))
                 .thenReturn(testParticipants);
-        
-        processor = new BridgeReporterProcessor();
-        processor.setBridgeHelper(mockBridgeHelper);
         
         processor.process(requestJsonDailySignUps);
         
         verify(mockBridgeHelper).getAllStudiesSummary();
-        verify(mockBridgeHelper).getParticipantsForStudy(TEST_STUDY_ID, TEST_START_DATETIME, TEST_END_DATETIME);
+        verify(mockBridgeHelper).getParticipantsForStudy(TEST_STUDY_ID, startDateTime, endDateTime);
         verify(mockBridgeHelper).saveReportForStudy(reportCaptor.capture());
         
         Report report = reportCaptor.getValue();
         assertEquals(TEST_STUDY_ID, report.getStudyId());
         assertEquals("test-scheduler-daily-signups-report", report.getReportId());
         assertEquals("2016-10-19", report.getDate().toString());
-        assertNotNull(report.getData());
+        // Verify this is the JSON structure we're expecting
+        Map<String,Map<String,Integer>> map = (Map<String,Map<String,Integer>>)report.getData();
+        assertTrue(map.containsKey("byStatus"));
+        assertTrue(map.containsKey("bySharing"));
     }
+    
 }
