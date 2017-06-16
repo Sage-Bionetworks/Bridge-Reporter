@@ -1,9 +1,9 @@
 package org.sagebionetworks.bridge.reporter.worker;
 
+import static org.testng.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.testng.AssertJUnit.assertEquals;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,12 +49,12 @@ public class UploadsReportGeneratorTest {
         generator.setBridgeHelper(bridgeHelper);
         Report report = generator.generate(request, study);
         
-        assertEquals(STUDY_ID, report.getStudyId());
-        assertEquals("test-scheduler-daily-signups-report", report.getReportId());
-        assertEquals("2017-06-09", report.getDate().toString());
+        assertEquals(report.getStudyId(), STUDY_ID);
+        assertEquals(report.getReportId(), "test-scheduler-daily-signups-report");
+        assertEquals(report.getDate().toString(), "2017-06-09");
         Map<String, Integer> map = (Map<String, Integer>)report.getData();
-        assertEquals(new Integer(1), map.get("requested"));
-        assertEquals(new Integer(1), map.get("succeeded"));
+        assertEquals(map.get("requested"), new Integer(1));
+        assertEquals(map.get("succeeded"), new Integer(1));
         
         verify(bridgeHelper).getUploadsForStudy(STUDY_ID, START_DATE, END_DATE);
     }

@@ -1,7 +1,7 @@
 package org.sagebionetworks.bridge.reporter.worker;
 
-import static org.testng.AssertJUnit.assertTrue;
-import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
@@ -191,11 +191,11 @@ public class BridgeReporterProcessorTest {
         verify(mockBridgeHelper).getUploadsForStudy(eq(TEST_STUDY_ID), eq(TEST_START_DATETIME), eq(TEST_END_DATETIME));
         
         verify(mockBridgeHelper).saveReportForStudy(reportCaptor.capture());
-        Report report = reportCaptor.getAllValues().get(0);
-        assertEquals(TEST_STUDY_ID, report.getStudyId());
-        assertEquals(TEST_REPORT_ID, report.getReportId());
-        assertEquals(TEST_START_DATETIME.toLocalDate(), report.getDate());
-        assertEquals(TEST_REPORT.getData(), report.getData());
+        Report report = reportCaptor.getValue();
+        assertEquals(report.getStudyId(), TEST_STUDY_ID);
+        assertEquals(report.getReportId(), TEST_REPORT_ID);
+        assertEquals(report.getDate(), TEST_START_DATETIME.toLocalDate());
+        assertEquals(report.getData(), TEST_REPORT.getData());
     }
 
     @Test
@@ -211,10 +211,10 @@ public class BridgeReporterProcessorTest {
 
         verify(mockBridgeHelper).saveReportForStudy(reportCaptor.capture());
         Report report = reportCaptor.getAllValues().get(0);
-        assertEquals(TEST_STUDY_ID, report.getStudyId());
-        assertEquals(TEST_REPORT_ID_WEEKLY, report.getReportId());
-        assertEquals(TEST_START_DATETIME.toLocalDate(), report.getDate());
-        assertEquals(TEST_REPORT_WEEKLY.getData(), report.getData());
+        assertEquals(report.getStudyId(), TEST_STUDY_ID);
+        assertEquals(report.getReportId(), TEST_REPORT_ID_WEEKLY);
+        assertEquals(report.getDate(), TEST_START_DATETIME.toLocalDate());
+        assertEquals(report.getData(), TEST_REPORT_WEEKLY.getData());
     }
 
     @Test
@@ -234,16 +234,16 @@ public class BridgeReporterProcessorTest {
         
         verify(mockBridgeHelper, times(2)).saveReportForStudy(reportCaptor.capture());
         Report report = reportCaptor.getAllValues().get(0);
-        assertEquals(TEST_STUDY_ID, report.getStudyId());
-        assertEquals(TEST_REPORT_ID, report.getReportId());
-        assertEquals(TEST_START_DATETIME.toLocalDate(), report.getDate());
-        assertEquals(TEST_REPORT.getData(), report.getData());
+        assertEquals(report.getStudyId(), TEST_STUDY_ID);
+        assertEquals(report.getReportId(), TEST_REPORT_ID);
+        assertEquals(report.getDate(), TEST_START_DATETIME.toLocalDate());
+        assertEquals(report.getData(), TEST_REPORT.getData());
         
         report = reportCaptor.getAllValues().get(1);
-        assertEquals(TEST_STUDY_ID_2, report.getStudyId());
-        assertEquals(TEST_REPORT_ID, report.getReportId());
-        assertEquals(TEST_START_DATETIME.toLocalDate(), report.getDate());
-        assertEquals(TEST_REPORT.getData(), report.getData());
+        assertEquals(report.getStudyId(), TEST_STUDY_ID_2);
+        assertEquals(report.getReportId(), TEST_REPORT_ID);
+        assertEquals(report.getDate(), TEST_START_DATETIME.toLocalDate());
+        assertEquals(report.getData(), TEST_REPORT.getData());
     }
 
     @Test
@@ -262,10 +262,10 @@ public class BridgeReporterProcessorTest {
         verify(mockBridgeHelper).saveReportForStudy(reportCaptor.capture());
         
         Report report = reportCaptor.getValue();
-        assertEquals(TEST_STUDY_ID, report.getStudyId());
-        assertEquals(TEST_REPORT_ID, report.getReportId());
-        assertEquals(TEST_START_DATETIME.toLocalDate(), report.getDate());
-        assertEquals(TEST_REPORT_2.getData(), report.getData());
+        assertEquals(report.getStudyId(), TEST_STUDY_ID);
+        assertEquals(report.getReportId(), TEST_REPORT_ID);
+        assertEquals(report.getDate(), TEST_START_DATETIME.toLocalDate());
+        assertEquals(report.getData(), TEST_REPORT_2.getData());
     }
 
     @Test(expectedExceptions = PollSqsWorkerBadRequestException.class)
@@ -293,9 +293,9 @@ public class BridgeReporterProcessorTest {
         verify(mockBridgeHelper).saveReportForStudy(reportCaptor.capture());
         
         Report report = reportCaptor.getValue();
-        assertEquals(TEST_STUDY_ID, report.getStudyId());
-        assertEquals("test-scheduler-daily-signups-report", report.getReportId());
-        assertEquals("2016-10-19", report.getDate().toString());
+        assertEquals(report.getStudyId(), TEST_STUDY_ID);
+        assertEquals(report.getReportId(), "test-scheduler-daily-signups-report");
+        assertEquals(report.getDate().toString(), "2016-10-19");
         // Verify this is the JSON structure we're expecting
         Map<String,Map<String,Integer>> map = (Map<String,Map<String,Integer>>)report.getData();
         assertTrue(map.containsKey("byStatus"));

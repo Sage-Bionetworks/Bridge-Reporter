@@ -1,6 +1,7 @@
 package org.sagebionetworks.bridge.reporter.worker;
 
-import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.Assert.assertEquals;
+
 import org.joda.time.LocalDate;
 import org.testng.annotations.Test;
 
@@ -16,10 +17,10 @@ public class ReportTest {
                 .withReportId("reportId")
                 .withDate(date)
                 .withReportData(data).build();
-        assertEquals("studyId", report.getStudyId());
-        assertEquals("reportId", report.getReportId());
-        assertEquals(date, report.getDate());
-        assertEquals(data, report.getData());
+        assertEquals(report.getStudyId(), "studyId");
+        assertEquals(report.getReportId(), "reportId");
+        assertEquals(report.getDate(), date);
+        assertEquals(report.getData(), data);
     }
 
 }

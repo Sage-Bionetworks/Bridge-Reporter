@@ -33,11 +33,20 @@ import org.sagebionetworks.bridge.rest.model.Message;
 import org.sagebionetworks.bridge.rest.model.ReportData;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyList;
+import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.rest.model.Upload;
 import org.sagebionetworks.bridge.rest.model.UploadList;
 
 @SuppressWarnings("unchecked")
 public class BridgeHelperTest {
+    private static final String USER_EMAIL_1 = "user1@user.com";
+    
+    private static final String USER_EMAIL_2 = "user2@user.com";
+
+    private static final String USER_ID_2 = "user2";
+
+    private static final String USER_ID_1 = "user1";
+
     private final String json = Tests.unescapeJson("{'contentLength':10000,"+
             "'status':'succeeded','requestedOn':'2016-07-26T22:43:10.392Z',"+
             "'completedOn':'2016-07-26T22:43:10.468Z','completedBy':'s3_worker',"+
@@ -174,33 +183,59 @@ public class BridgeHelperTest {
     @Test
     public void testGetParticipantsForStudy() throws Exception {
         ForWorkersApi mockWorkerClient = mock(ForWorkersApi.class);
-        Call<AccountSummaryList> mockCall1 = createResponseForOffset(0L, 100L);
-        when(mockWorkerClient.getParticipantsInStudy(TEST_STUDY_ID, 0, 100, null, TEST_START_DATETIME,
+        
+        ClientManager mockClientManager = mock(ClientManager.class);
+        when(mockClientManager.getClient(ForWorkersApi.class)).thenReturn(mockWorkerClient);
+
+        AccountSummary summary1 = new AccountSummary().id(USER_ID_1).email(USER_EMAIL_1);
+        AccountSummary summary2 = new AccountSummary().id(USER_ID_2).email(USER_EMAIL_2);
+        
+        Call<AccountSummaryList> mockCall1 = createResponseForOffset(0L, 100L, summary1, summary2);
+        when(mockWorkerClient.getParticipantsInStudy(TEST_STUDY_ID, null, 100, null, TEST_START_DATETIME,
                 TEST_END_DATETIME)).thenReturn(mockCall1);
         
         Call<AccountSummaryList> mockCall2 = createResponseForOffset(100L, null);
         when(mockWorkerClient.getParticipantsInStudy(TEST_STUDY_ID, 100, 100, null, TEST_START_DATETIME,
                 TEST_END_DATETIME)).thenReturn(mockCall2);
         
-        ClientManager mockClientManager = mock(ClientManager.class);
-        when(mockClientManager.getClient(ForWorkersApi.class)).thenReturn(mockWorkerClient);
+        StudyParticipant studyParticipant1 = new StudyParticipant();
+        Call<StudyParticipant> spCall = makeCall(studyParticipant1);
+        when(mockWorkerClient.getParticipantInStudy(TEST_STUDY_ID, USER_ID_1)).thenReturn(spCall);
+        
+        StudyParticipant studyParticipant2 = new StudyParticipant();
+        spCall = makeCall(studyParticipant2);
+        when(mockWorkerClient.getParticipantInStudy(TEST_STUDY_ID, USER_ID_2)).thenReturn(spCall);
         
         BridgeHelper bridgeHelper = new BridgeHelper();
         bridgeHelper.setBridgeClientManager(mockClientManager);
         
-        bridgeHelper.getParticipantsForStudy(TEST_STUDY_ID, TEST_START_DATETIME, TEST_END_DATETIME);
+        List<StudyParticipant> participants = bridgeHelper.getParticipantsForStudy(TEST_STUDY_ID, TEST_START_DATETIME,
+                TEST_END_DATETIME);
+        assertEquals(participants.get(0), studyParticipant1);
+        assertEquals(participants.get(1), studyParticipant2);
         
-        verify(mockWorkerClient).getParticipantsInStudy(TEST_STUDY_ID, 0, 100, null, TEST_START_DATETIME,
+        verify(mockWorkerClient).getParticipantsInStudy(TEST_STUDY_ID, null, 100, null, TEST_START_DATETIME,
                 TEST_END_DATETIME);
         verify(mockWorkerClient).getParticipantsInStudy(TEST_STUDY_ID, 100, 100, null, TEST_START_DATETIME,
                 TEST_END_DATETIME);
+        verify(mockWorkerClient).getParticipantInStudy(TEST_STUDY_ID, USER_ID_1);
+        verify(mockWorkerClient).getParticipantInStudy(TEST_STUDY_ID, USER_ID_2);
     }
-
-    private Call<AccountSummaryList> createResponseForOffset(Long offsetBy, Long nextOffset) throws IOException {
+    
+    private <T> Call<T> makeCall(T object) throws IOException {
+        Response<T> response = Response.success(object);
+        Call<T> mockCall = mock(Call.class);
+        when(mockCall.execute()).thenReturn(response);
+        return mockCall;
+    }
+    
+    private Call<AccountSummaryList> createResponseForOffset(Long offsetBy, Long nextOffset, AccountSummary... summaries) throws IOException {
         List<AccountSummary> page = new ArrayList<>();
         AccountSummaryList list = new AccountSummaryList().items(page).offsetBy(nextOffset).pageSize(100)
                 .startDate(TEST_START_DATETIME).endDate(TEST_END_DATETIME);
-        
+        for (AccountSummary summary : summaries) {
+            list.addItemsItem(summary);
+        }
         Response<AccountSummaryList> response = Response.success(list);
         
         Call<AccountSummaryList> mockCall = mock(Call.class);

@@ -15,8 +15,8 @@ public class ReportTypeTest {
     
     @Test
     public void test() {
-        assertEquals("-daily-upload-report", ReportType.DAILY.getSuffix());
-        assertEquals("-weekly-upload-report", ReportType.WEEKLY.getSuffix());
-        assertEquals("-daily-signups-report", ReportType.DAILY_SIGNUPS.getSuffix());
+        assertEquals(ReportType.DAILY.getSuffix(), "-daily-upload-report");
+        assertEquals(ReportType.WEEKLY.getSuffix(), "-weekly-upload-report");
+        assertEquals(ReportType.DAILY_SIGNUPS.getSuffix(), "-daily-signups-report");
     }
 }

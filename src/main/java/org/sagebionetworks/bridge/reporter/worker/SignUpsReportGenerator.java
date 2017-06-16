@@ -59,10 +59,16 @@ public class SignUpsReportGenerator implements ReportGenerator {
         }
         
         Map<String, Integer> statusData = new HashMap<>();
+        for (AccountStatus status : AccountStatus.values()) {
+            statusData.put(status.name().toLowerCase(), 0);
+        }
         for (AccountStatus status : statuses) {
             statusData.put(status.name().toLowerCase(), statuses.count(status));
         }
         Map<String, Integer> sharingData = new HashMap<>();
+        for (SharingScope scope : SharingScope.values()) {
+            sharingData.put(scope.name().toLowerCase(), 0);
+        }
         for (SharingScope scope : sharingScopes) {
             sharingData.put(scope.name().toLowerCase(), sharingScopes.count(scope));
         }
