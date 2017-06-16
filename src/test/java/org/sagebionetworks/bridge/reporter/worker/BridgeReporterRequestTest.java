@@ -113,10 +113,12 @@ public class BridgeReporterRequestTest {
         String jsonText = "{\n" +
                 "   \"scheduler\":\"test-scheduler\",\n" +
                 "   \"scheduleType\":\"DAILY_SIGNUPS\",\n" +
-                "   \"startDateTime\":\"2016-10-19T00:00:00.000Z\",\n" +
-                "   \"endDateTime\":\"2016-10-20T23:59:59.000Z\"\n" +
+                "   \"startDateTime\":\"2016-10-19T00:00:00.000-07:00\",\n" +
+                "   \"endDateTime\":\"2016-10-20T23:59:59.000-07:00\"\n" +
                 "}";
         BridgeReporterRequest request = DefaultObjectMapper.INSTANCE.readValue(jsonText, BridgeReporterRequest.class);
         assertEquals(request.getScheduleType(), ReportType.DAILY_SIGNUPS);
+        assertEquals(request.getStartDateTime().toString(), "2016-10-19T00:00:00.000-07:00");
+        assertEquals(request.getEndDateTime().toString(), "2016-10-20T23:59:59.000-07:00");
     }
 }

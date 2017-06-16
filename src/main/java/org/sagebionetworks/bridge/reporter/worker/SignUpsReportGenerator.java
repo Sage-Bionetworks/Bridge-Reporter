@@ -58,6 +58,8 @@ public class SignUpsReportGenerator implements ReportGenerator {
             }
         }
         
+        // Multiset doesn't record zeroes, so add these first for all enum values, then overwrite
+        // (so JSON includes properties for all enumerations, even if missing).
         Map<String, Integer> statusData = new HashMap<>();
         for (AccountStatus status : AccountStatus.values()) {
             statusData.put(status.name().toLowerCase(), 0);

@@ -40,11 +40,8 @@ import org.sagebionetworks.bridge.rest.model.UploadList;
 @SuppressWarnings("unchecked")
 public class BridgeHelperTest {
     private static final String USER_EMAIL_1 = "user1@user.com";
-    
     private static final String USER_EMAIL_2 = "user2@user.com";
-
     private static final String USER_ID_2 = "user2";
-
     private static final String USER_ID_1 = "user1";
 
     private final String json = Tests.unescapeJson("{'contentLength':10000,"+
