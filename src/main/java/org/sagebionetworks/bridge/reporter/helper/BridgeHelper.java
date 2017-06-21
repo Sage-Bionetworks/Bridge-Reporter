@@ -91,7 +91,7 @@ public class BridgeHelper {
                 retList.add(participant);
                 doSleep();
             }
-            offset = (summaries.getOffsetBy() != null) ? summaries.getOffsetBy() : null;
+            offset = summaries.getOffsetBy();
         } while(offset != null);
         
         return retList;

@@ -80,7 +80,7 @@ public class SignUpsReportGeneratorTest {
         when(bridgeHelper.getAllStudiesSummary()).thenReturn(Lists.newArrayList(study));
         
         List<StudyParticipant> participants = new ArrayList<>();
-        participants.add((StudyParticipant) new StudyParticipant().status(AccountStatus.DISABLED)
+        participants.add((StudyParticipant) new StudyParticipant().status(AccountStatus.ENABLED)
                 .sharingScope(SharingScope.NO_SHARING));
         participants.add((StudyParticipant) new StudyParticipant().status(AccountStatus.ENABLED)
                 .sharingScope(SharingScope.NO_SHARING));
@@ -99,13 +99,13 @@ public class SignUpsReportGeneratorTest {
         assertEquals(report.getDate().toString(), "2017-06-09");
         
         Map<String,Map<String,Integer>> map = (Map<String,Map<String,Integer>>)report.getData();
-        assertEquals(map.get("byStatus").get("enabled"), new Integer(2));
-        assertEquals(map.get("byStatus").get("disabled"), new Integer(1));
+        assertEquals(map.get("byStatus").get("enabled"), new Integer(3));
+        assertEquals(map.get("byStatus").get("disabled"), new Integer(0));
         assertEquals(map.get("byStatus").get("unverified"), new Integer(1));
         
         // Only enabled accounts are included in the sharing status information. So there 
         // are only two in this set
-        assertEquals(map.get("bySharing").get("no_sharing"), new Integer(1));
+        assertEquals(map.get("bySharing").get("no_sharing"), new Integer(2));
         assertEquals(map.get("bySharing").get("all_qualified_researchers"), new Integer(1));
         assertEquals(map.get("bySharing").get("sponsors_and_partners"), new Integer(0));
     }

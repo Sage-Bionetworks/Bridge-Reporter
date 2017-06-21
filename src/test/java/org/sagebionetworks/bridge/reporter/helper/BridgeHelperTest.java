@@ -1,5 +1,6 @@
 package org.sagebionetworks.bridge.reporter.helper;
 
+import static com.google.common.collect.Lists.newArrayList;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -15,6 +16,8 @@ import java.util.Map;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
+
 import org.joda.time.DateTime;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -41,8 +44,12 @@ import org.sagebionetworks.bridge.rest.model.UploadList;
 public class BridgeHelperTest {
     private static final String USER_EMAIL_1 = "user1@user.com";
     private static final String USER_EMAIL_2 = "user2@user.com";
-    private static final String USER_ID_2 = "user2";
+    private static final String USER_EMAIL_3 = "user3@user.com";
+    private static final String USER_EMAIL_4 = "user4@user.com";
     private static final String USER_ID_1 = "user1";
+    private static final String USER_ID_2 = "user2";
+    private static final String USER_ID_3 = "user3";
+    private static final String USER_ID_4 = "user4";
 
     private final String json = Tests.unescapeJson("{'contentLength':10000,"+
             "'status':'succeeded','requestedOn':'2016-07-26T22:43:10.392Z',"+
@@ -190,26 +197,30 @@ public class BridgeHelperTest {
         Call<AccountSummaryList> mockCall1 = createResponseForOffset(0L, 100L, summary1, summary2);
         when(mockWorkerClient.getParticipantsInStudy(TEST_STUDY_ID, null, 100, null, TEST_START_DATETIME,
                 TEST_END_DATETIME)).thenReturn(mockCall1);
+
+        AccountSummary summary3 = new AccountSummary().id(USER_ID_3).email(USER_EMAIL_3);
+        AccountSummary summary4 = new AccountSummary().id(USER_ID_4).email(USER_EMAIL_4);
         
-        Call<AccountSummaryList> mockCall2 = createResponseForOffset(100L, null);
+        Call<AccountSummaryList> mockCall2 = createResponseForOffset(100L, null, summary3, summary4);
         when(mockWorkerClient.getParticipantsInStudy(TEST_STUDY_ID, 100, 100, null, TEST_START_DATETIME,
                 TEST_END_DATETIME)).thenReturn(mockCall2);
         
-        StudyParticipant studyParticipant1 = new StudyParticipant();
-        Call<StudyParticipant> spCall = makeCall(studyParticipant1);
-        when(mockWorkerClient.getParticipantInStudy(TEST_STUDY_ID, USER_ID_1)).thenReturn(spCall);
-        
-        StudyParticipant studyParticipant2 = new StudyParticipant();
-        spCall = makeCall(studyParticipant2);
-        when(mockWorkerClient.getParticipantInStudy(TEST_STUDY_ID, USER_ID_2)).thenReturn(spCall);
+        List<StudyParticipant> stubParticipants = newArrayList();
+        stubParticipants.add(mockCallForParticipant(mockWorkerClient, USER_ID_1));
+        stubParticipants.add(mockCallForParticipant(mockWorkerClient, USER_ID_2));
+        stubParticipants.add(mockCallForParticipant(mockWorkerClient, USER_ID_3));
+        stubParticipants.add(mockCallForParticipant(mockWorkerClient, USER_ID_4));
         
         BridgeHelper bridgeHelper = new BridgeHelper();
         bridgeHelper.setBridgeClientManager(mockClientManager);
         
         List<StudyParticipant> participants = bridgeHelper.getParticipantsForStudy(TEST_STUDY_ID, TEST_START_DATETIME,
                 TEST_END_DATETIME);
-        assertEquals(participants.get(0), studyParticipant1);
-        assertEquals(participants.get(1), studyParticipant2);
+        // All four participants are returned from two pages of records
+        assertEquals(participants.get(0), stubParticipants.get(0));
+        assertEquals(participants.get(1), stubParticipants.get(1));
+        assertEquals(participants.get(2), stubParticipants.get(2));
+        assertEquals(participants.get(3), stubParticipants.get(3));
         
         verify(mockWorkerClient).getParticipantsInStudy(TEST_STUDY_ID, null, 100, null, TEST_START_DATETIME,
                 TEST_END_DATETIME);
@@ -217,6 +228,15 @@ public class BridgeHelperTest {
                 TEST_END_DATETIME);
         verify(mockWorkerClient).getParticipantInStudy(TEST_STUDY_ID, USER_ID_1);
         verify(mockWorkerClient).getParticipantInStudy(TEST_STUDY_ID, USER_ID_2);
+        verify(mockWorkerClient).getParticipantInStudy(TEST_STUDY_ID, USER_ID_3);
+        verify(mockWorkerClient).getParticipantInStudy(TEST_STUDY_ID, USER_ID_4);
+    }
+    
+    private StudyParticipant mockCallForParticipant(ForWorkersApi client, String userId) throws Exception {
+        StudyParticipant studyParticipant = new StudyParticipant();
+        Call<StudyParticipant> spCall = makeCall(studyParticipant);
+        when(client.getParticipantInStudy(TEST_STUDY_ID, userId)).thenReturn(spCall);
+        return studyParticipant;
     }
     
     private <T> Call<T> makeCall(T object) throws IOException {

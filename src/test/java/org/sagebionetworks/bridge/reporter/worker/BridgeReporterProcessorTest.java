@@ -210,7 +210,7 @@ public class BridgeReporterProcessorTest {
         verify(mockBridgeHelper, times(1)).getUploadsForStudy(eq(TEST_STUDY_ID), any(), any());
 
         verify(mockBridgeHelper).saveReportForStudy(reportCaptor.capture());
-        Report report = reportCaptor.getAllValues().get(0);
+        Report report = reportCaptor.getValue();
         assertEquals(report.getStudyId(), TEST_STUDY_ID);
         assertEquals(report.getReportId(), TEST_REPORT_ID_WEEKLY);
         assertEquals(report.getDate(), TEST_START_DATETIME.toLocalDate());
