@@ -3,9 +3,15 @@ package org.sagebionetworks.bridge.reporter.config;
 import org.sagebionetworks.bridge.config.Config;
 import org.sagebionetworks.bridge.config.PropertiesConfig;
 import org.sagebionetworks.bridge.heartbeat.HeartbeatLogger;
+import org.sagebionetworks.bridge.reporter.request.ReportType;
+import org.sagebionetworks.bridge.reporter.worker.ReportGenerator;
+import org.sagebionetworks.bridge.reporter.worker.SignUpsReportGenerator;
+import org.sagebionetworks.bridge.reporter.worker.UploadsReportGenerator;
 import org.sagebionetworks.bridge.rest.ClientManager;
 import org.sagebionetworks.bridge.rest.model.ClientInfo;
 import org.sagebionetworks.bridge.rest.model.SignIn;
+
+import com.google.common.collect.ImmutableMap;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
@@ -15,6 +21,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
 
 // These configs get credentials from the default credential chain. For developer desktops, this is ~/.aws/credentials.
 // For EC2 instances, this happens transparently.
@@ -59,5 +66,15 @@ public class SpringConfig {
         HeartbeatLogger heartbeatLogger = new HeartbeatLogger();
         heartbeatLogger.setIntervalMinutes(bridgeConfig().getInt("heartbeat.interval.minutes"));
         return heartbeatLogger;
+    }
+    
+    @Bean
+    public Map<ReportType, ReportGenerator> generatorMap(UploadsReportGenerator uploadsGenerator,
+            SignUpsReportGenerator signupsGenerator) {
+        return new ImmutableMap.Builder<ReportType, ReportGenerator>()
+            .put(ReportType.DAILY, uploadsGenerator)
+            .put(ReportType.WEEKLY, uploadsGenerator)
+            .put(ReportType.DAILY_SIGNUPS, signupsGenerator)
+            .build();
     }
 }

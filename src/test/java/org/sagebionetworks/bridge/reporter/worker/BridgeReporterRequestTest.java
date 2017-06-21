@@ -2,7 +2,8 @@ package org.sagebionetworks.bridge.reporter.worker;
 
 import org.joda.time.DateTime;
 import org.sagebionetworks.bridge.json.DefaultObjectMapper;
-import org.sagebionetworks.bridge.reporter.request.ReportScheduleName;
+import org.sagebionetworks.bridge.reporter.request.ReportType;
+
 import org.testng.annotations.Test;
 
 import java.util.Map;
@@ -12,7 +13,7 @@ import static org.testng.Assert.assertEquals;
 @SuppressWarnings("unchecked")
 public class BridgeReporterRequestTest {
     private static final String TEST_SCHEDULER = "test-scheduler";
-    private static final ReportScheduleName TEST_SCHEDULE_TYPE = ReportScheduleName.DAILY;
+    private static final ReportType TEST_SCHEDULE_TYPE = ReportType.DAILY;
     private static final DateTime TEST_START_DATETIME = DateTime.parse("2016-10-19T00:00:00Z");
     private static final DateTime TEST_END_DATETIME = DateTime.parse("2016-10-20T23:59:59Z");
 
@@ -72,7 +73,7 @@ public class BridgeReporterRequestTest {
 
     @Test(expectedExceptions = IllegalStateException.class)
     public void startDateAfterEndDate() {
-        BridgeReporterRequest request = new BridgeReporterRequest.Builder().withScheduler(TEST_SCHEDULER)
+        new BridgeReporterRequest.Builder().withScheduler(TEST_SCHEDULER)
                 .withScheduleType(TEST_SCHEDULE_TYPE)
                 .withStartDateTime(TEST_END_DATETIME)
                 .withEndDateTime(TEST_START_DATETIME).build();
@@ -105,5 +106,19 @@ public class BridgeReporterRequestTest {
         assertEquals(jsonMap.get("scheduleType"), "DAILY");
         assertEquals(jsonMap.get("startDateTime"), "2016-10-19T00:00:00.000Z");
         assertEquals(jsonMap.get("endDateTime"), "2016-10-20T23:59:59.000Z");
+    }
+    
+    @Test
+    public void deserializeDailySignupsRequest() throws Exception {
+        String jsonText = "{\n" +
+                "   \"scheduler\":\"test-scheduler\",\n" +
+                "   \"scheduleType\":\"DAILY_SIGNUPS\",\n" +
+                "   \"startDateTime\":\"2016-10-19T00:00:00.000-07:00\",\n" +
+                "   \"endDateTime\":\"2016-10-20T23:59:59.000-07:00\"\n" +
+                "}";
+        BridgeReporterRequest request = DefaultObjectMapper.INSTANCE.readValue(jsonText, BridgeReporterRequest.class);
+        assertEquals(request.getScheduleType(), ReportType.DAILY_SIGNUPS);
+        assertEquals(request.getStartDateTime().toString(), "2016-10-19T00:00:00.000-07:00");
+        assertEquals(request.getEndDateTime().toString(), "2016-10-20T23:59:59.000-07:00");
     }
 }

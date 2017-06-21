@@ -1,6 +1,5 @@
 package org.sagebionetworks.bridge.reporter.worker;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
@@ -8,7 +7,7 @@ import com.google.common.base.Strings;
 import org.joda.time.DateTime;
 import org.sagebionetworks.bridge.json.DateTimeDeserializer;
 import org.sagebionetworks.bridge.json.DateTimeToStringSerializer;
-import org.sagebionetworks.bridge.reporter.request.ReportScheduleName;
+import org.sagebionetworks.bridge.reporter.request.ReportType;
 
 /** Represents a request to the Bridge Reporting Service. */
 @JsonDeserialize(builder = BridgeReporterRequest.Builder.class)
@@ -18,13 +17,13 @@ public class BridgeReporterRequest {
     private final DateTime startDateTime;
     private final DateTime endDateTime;
     private final String scheduler;
-    private final ReportScheduleName scheduleType;
+    private final ReportType reportType;
 
-    public BridgeReporterRequest(DateTime startDateTime, DateTime endDateTime, String scheduler, ReportScheduleName scheduleType) {
+    public BridgeReporterRequest(DateTime startDateTime, DateTime endDateTime, String scheduler, ReportType scheduleType) {
         this.startDateTime = startDateTime;
         this.endDateTime = endDateTime;
         this.scheduler = scheduler;
-        this.scheduleType = scheduleType;
+        this.reportType = scheduleType;
     }
 
     @JsonSerialize(using = DateTimeToStringSerializer.class)
@@ -42,8 +41,8 @@ public class BridgeReporterRequest {
         return this.scheduler;
     }
 
-    public ReportScheduleName getScheduleType() {
-        return this.scheduleType;
+    public ReportType getScheduleType() {
+        return this.reportType;
     }
     /*
     Bridge-Reporter request builder
@@ -52,7 +51,7 @@ public class BridgeReporterRequest {
         private DateTime startDateTime;
         private DateTime endDateTime;
         private String scheduler;
-        private ReportScheduleName scheduleType;
+        private ReportType reportType;
 
         @JsonDeserialize(using = DateTimeDeserializer.class)
         public Builder withStartDateTime(DateTime startDateTime) {
@@ -71,8 +70,8 @@ public class BridgeReporterRequest {
             return this;
         }
 
-        public Builder withScheduleType(ReportScheduleName scheduleType) {
-            this.scheduleType = scheduleType;
+        public Builder withScheduleType(ReportType reportType) {
+            this.reportType = reportType;
             return this;
         }
 
@@ -81,7 +80,7 @@ public class BridgeReporterRequest {
                 throw new IllegalStateException("scheduler must be specified.");
             }
 
-            if (scheduleType == null) {
+            if (reportType == null) {
                 throw new IllegalStateException("scheduleType must be specified.");
             }
 
@@ -97,7 +96,7 @@ public class BridgeReporterRequest {
                 throw new IllegalStateException("startDateTime can't be after endDateTime.");
             }
 
-            return new BridgeReporterRequest(startDateTime, endDateTime, scheduler, scheduleType);
+            return new BridgeReporterRequest(startDateTime, endDateTime, scheduler, reportType);
         }
     }
 }

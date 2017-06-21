@@ -10,14 +10,15 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import org.sagebionetworks.bridge.reporter.worker.Report;
 import org.sagebionetworks.bridge.rest.ClientManager;
-import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
 import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
-import org.sagebionetworks.bridge.rest.exceptions.NotAuthenticatedException;
+import org.sagebionetworks.bridge.rest.model.AccountSummary;
+import org.sagebionetworks.bridge.rest.model.AccountSummaryList;
 import org.sagebionetworks.bridge.rest.model.ReportData;
-import org.sagebionetworks.bridge.rest.model.SignIn;
 import org.sagebionetworks.bridge.rest.model.Study;
+import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.rest.model.Upload;
 import org.sagebionetworks.bridge.rest.model.UploadList;
 
@@ -29,11 +30,11 @@ public class BridgeHelper {
     private static final Logger LOG = LoggerFactory.getLogger(BridgeHelper.class);
 
     // match read capacity in ddb table
-    static final long MAX_PAGE_SIZE = 10L;
+    static final int MAX_PAGE_SIZE = 10;
     private static final long THREAD_SLEEP_INTERVAL = 1000L;
+    private static final int PARTICIPANT_PAGE_SIZE = 100;
 
     private ClientManager bridgeClientManager;
-    private SignIn bridgeCredentials;
 
     /** Bridge Client Manager, with credentials for Exporter account. This is used to refresh the session. */
     @Autowired
@@ -41,18 +42,11 @@ public class BridgeHelper {
         this.bridgeClientManager = bridgeClientManager;
     }
 
-    /** Bridge credentials, used by the session helper to refresh the session. */
-    @Autowired
-    public final void setBridgeCredentials(SignIn bridgeCredentials) {
-        this.bridgeCredentials = bridgeCredentials;
-    }
-
     /*
      * Helper method to get all studies summary as list from sdk
      */
     public List<Study> getAllStudiesSummary() throws IOException {
-        return sessionHelper(() -> bridgeClientManager.getClient(StudiesApi.class).getStudies(true).execute().body()
-                .getItems());
+        return bridgeClientManager.getClient(StudiesApi.class).getStudies(true).execute().body().getItems();
     }
 
     /*
@@ -65,51 +59,60 @@ public class BridgeHelper {
         List<Upload> retList = new ArrayList<>();
         String offsetKey = null;
 
+        ForWorkersApi workersApi = bridgeClientManager.getClient(ForWorkersApi.class);
         do {
+            
             final String temOffsetKey = offsetKey;
-            UploadList retBody = sessionHelper(() -> bridgeClientManager.getClient(ForWorkersApi.class).getUploadsInStudy(studyId,
-                    startDateTime, endDateTime, MAX_PAGE_SIZE, temOffsetKey).execute().body());
+            UploadList retBody = workersApi
+                    .getUploadsInStudy(studyId, startDateTime, endDateTime, MAX_PAGE_SIZE, temOffsetKey).execute()
+                    .body();
             retList.addAll(retBody.getItems());
             offsetKey = retBody.getOffsetKey();
-            // sleep a second
-            try {
-                Thread.sleep(THREAD_SLEEP_INTERVAL);
-            } catch (InterruptedException e) {
-                LOG.warn("The thread for get uploads was being interrupted.", e);
-            }
+            doSleep();
         } while (offsetKey != null);
 
         return retList;
+    }
+    
+    public List<StudyParticipant> getParticipantsForStudy(String studyId, DateTime startDateTime, DateTime endDateTime)
+            throws IOException {
+        List<StudyParticipant> retList = new ArrayList<>();
+        
+        ForWorkersApi workersApi = bridgeClientManager.getClient(ForWorkersApi.class);
+        
+        Long offset = null;
+        do {
+            Integer asInteger = (offset == null) ? null : offset.intValue();
+            AccountSummaryList summaries = workersApi
+                    .getParticipantsInStudy(studyId, asInteger, PARTICIPANT_PAGE_SIZE, null, startDateTime, endDateTime)
+                    .execute().body();
+            for (AccountSummary summary : summaries.getItems()) {
+                StudyParticipant participant = workersApi.getParticipantInStudy(studyId, summary.getId()).execute().body();
+                retList.add(participant);
+                doSleep();
+            }
+            offset = summaries.getOffsetBy();
+        } while(offset != null);
+        
+        return retList;
+    }
+    
+    private void doSleep() {
+        // sleep a second
+        try {
+            Thread.sleep(THREAD_SLEEP_INTERVAL);
+        } catch (InterruptedException e) {
+            LOG.warn("The thread for get uploads was being interrupted.", e);
+        }
     }
 
     /**
      * Helper method to save report for specified study with report id and report data
      */
-    public void saveReportForStudy(String studyId, String reportId, ReportData reportData) throws IOException {
-        sessionHelper(() -> bridgeClientManager.getClient(ForWorkersApi.class).saveReportForStudy(studyId, reportId,
-                reportData).execute());
+    public void saveReportForStudy(Report report) throws IOException {
+        ReportData reportData = new ReportData().date(report.getDate()).data(report.getData());
+        bridgeClientManager.getClient(ForWorkersApi.class)
+                .saveReportForStudy(report.getStudyId(), report.getReportId(), reportData).execute();
     }
 
-    // Helper method, which wraps a Bridge Server call with logic for initializing and refreshing a session.
-    private <T> T sessionHelper(BridgeCallable<T> callable) throws IOException {
-        // First attempt. This should be enough for most cases.
-        try {
-            return callable.call();
-        } catch (NotAuthenticatedException ex) {
-            // Code readability reasons, the error handling will be done after the catch block instead of inside the
-            // catch block.
-        }
-
-        // Refresh session and try again. This time, if the call fails, just let the exception bubble up.
-        LOG.info("Bridge server session expired. Refreshing session...");
-        bridgeClientManager.getClient(AuthenticationApi.class).signIn(bridgeCredentials).execute();
-
-        return callable.call();
-    }
-
-    // Functional interface used to make lambdas for the session helper.
-    @FunctionalInterface
-    interface BridgeCallable<T> {
-        T call() throws IOException;
-    }
 }

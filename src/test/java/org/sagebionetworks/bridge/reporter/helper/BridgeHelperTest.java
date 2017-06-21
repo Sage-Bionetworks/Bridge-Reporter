@@ -1,7 +1,7 @@
 package org.sagebionetworks.bridge.reporter.helper;
 
+import static com.google.common.collect.Lists.newArrayList;
 import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -10,43 +10,53 @@ import static org.sagebionetworks.bridge.reporter.helper.BridgeHelper.MAX_PAGE_S
 import static org.testng.Assert.assertEquals;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
+
 import org.joda.time.DateTime;
-import org.mockito.InOrder;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 import retrofit2.Call;
 import retrofit2.Response;
 
 import org.sagebionetworks.bridge.reporter.Tests;
+import org.sagebionetworks.bridge.reporter.worker.Report;
 import org.sagebionetworks.bridge.rest.ClientManager;
 import org.sagebionetworks.bridge.rest.RestUtils;
-import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
 import org.sagebionetworks.bridge.rest.api.ForWorkersApi;
 import org.sagebionetworks.bridge.rest.api.StudiesApi;
-import org.sagebionetworks.bridge.rest.exceptions.NotAuthenticatedException;
+import org.sagebionetworks.bridge.rest.model.AccountSummary;
+import org.sagebionetworks.bridge.rest.model.AccountSummaryList;
 import org.sagebionetworks.bridge.rest.model.Message;
 import org.sagebionetworks.bridge.rest.model.ReportData;
-import org.sagebionetworks.bridge.rest.model.SignIn;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyList;
+import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.rest.model.Upload;
 import org.sagebionetworks.bridge.rest.model.UploadList;
-import org.sagebionetworks.bridge.rest.model.UserSessionInfo;
 
 @SuppressWarnings("unchecked")
 public class BridgeHelperTest {
+    private static final String USER_EMAIL_1 = "user1@user.com";
+    private static final String USER_EMAIL_2 = "user2@user.com";
+    private static final String USER_EMAIL_3 = "user3@user.com";
+    private static final String USER_EMAIL_4 = "user4@user.com";
+    private static final String USER_ID_1 = "user1";
+    private static final String USER_ID_2 = "user2";
+    private static final String USER_ID_3 = "user3";
+    private static final String USER_ID_4 = "user4";
+
     private final String json = Tests.unescapeJson("{'contentLength':10000,"+
             "'status':'succeeded','requestedOn':'2016-07-26T22:43:10.392Z',"+
             "'completedOn':'2016-07-26T22:43:10.468Z','completedBy':'s3_worker',"+
             "'uploadDate':'2016-10-10','uploadId':'DEF','validationMessageList':"+
             "['message 1','message 2'],'schemaId':'schemaId','schemaRevision':2,'type':'Upload'}");
 
-    private static final SignIn TEST_SIGN_IN = new SignIn();
     private static final String TEST_STUDY_ID = "api";
     private static final String TEST_REPORT_ID = "test-report";
     private static final DateTime TEST_START_DATETIME = new DateTime();
@@ -165,62 +175,88 @@ public class BridgeHelperTest {
         // set up BridgeHelper
         BridgeHelper bridgeHelper = new BridgeHelper();
         bridgeHelper.setBridgeClientManager(mockClientManager);
+        
+        Report report = new Report.Builder().withStudyId(TEST_STUDY_ID)
+                .withReportId(TEST_REPORT_ID).withDate(TEST_REPORT.getDate())
+                .withReportData(TEST_REPORT.getData()).build();
 
-        bridgeHelper.saveReportForStudy(TEST_STUDY_ID, TEST_REPORT_ID, TEST_REPORT);
+        bridgeHelper.saveReportForStudy(report);
         verify(mockCall).execute();
     }
-
+    
     @Test
-    public void testSessionHelper() throws Exception {
-        // 3 test cases:
-        // 1. first request initializes session
-        // 2. second request re-uses same session
-        // 3. third request gets 401'ed, refreshes session
-        //
-        // This necessitates 4 calls to our test server call (we'll use save report):
-        // 1. Initial call succeeds.
-        // 2. Second call also succeeds.
-        // 3. Third call throws 401.
-        // 4. Fourth call succeeds, to complete our call pattern.
-
-        // Mock ForWorkersApi - third call throws
-        Call<Message> mockReportCall1 = mock(Call.class);
-        Call<Message> mockReportCall2 = mock(Call.class);
-        Call<Message> mockReportCall3a = mock(Call.class);
-        Call<Message> mockReportCall3b = mock(Call.class);
-        when(mockReportCall3a.execute()).thenThrow(NotAuthenticatedException.class);
-
-        ForWorkersApi mockWorkersApi = mock(ForWorkersApi.class);
-        when(mockWorkersApi.saveReportForStudy(TEST_STUDY_ID, TEST_REPORT_ID, TEST_REPORT)).thenReturn(mockReportCall1,
-                mockReportCall2, mockReportCall3a, mockReportCall3b);
-
-        // Mock AuthenticationApi
-        Call<UserSessionInfo> mockSignInCall = mock(Call.class);
-        AuthenticationApi mockAuthApi = mock(AuthenticationApi.class);
-        when(mockAuthApi.signIn(TEST_SIGN_IN)).thenReturn(mockSignInCall);
-
-        // Mock Client Manager
+    public void testGetParticipantsForStudy() throws Exception {
+        ForWorkersApi mockWorkerClient = mock(ForWorkersApi.class);
+        
         ClientManager mockClientManager = mock(ClientManager.class);
-        when(mockClientManager.getClient(AuthenticationApi.class)).thenReturn(mockAuthApi);
-        when(mockClientManager.getClient(ForWorkersApi.class)).thenReturn(mockWorkersApi);
+        when(mockClientManager.getClient(ForWorkersApi.class)).thenReturn(mockWorkerClient);
 
-        // Set up Bridge Helper
+        AccountSummary summary1 = new AccountSummary().id(USER_ID_1).email(USER_EMAIL_1);
+        AccountSummary summary2 = new AccountSummary().id(USER_ID_2).email(USER_EMAIL_2);
+        
+        Call<AccountSummaryList> mockCall1 = createResponseForOffset(0L, 100L, summary1, summary2);
+        when(mockWorkerClient.getParticipantsInStudy(TEST_STUDY_ID, null, 100, null, TEST_START_DATETIME,
+                TEST_END_DATETIME)).thenReturn(mockCall1);
+
+        AccountSummary summary3 = new AccountSummary().id(USER_ID_3).email(USER_EMAIL_3);
+        AccountSummary summary4 = new AccountSummary().id(USER_ID_4).email(USER_EMAIL_4);
+        
+        Call<AccountSummaryList> mockCall2 = createResponseForOffset(100L, null, summary3, summary4);
+        when(mockWorkerClient.getParticipantsInStudy(TEST_STUDY_ID, 100, 100, null, TEST_START_DATETIME,
+                TEST_END_DATETIME)).thenReturn(mockCall2);
+        
+        List<StudyParticipant> stubParticipants = newArrayList();
+        stubParticipants.add(mockCallForParticipant(mockWorkerClient, USER_ID_1));
+        stubParticipants.add(mockCallForParticipant(mockWorkerClient, USER_ID_2));
+        stubParticipants.add(mockCallForParticipant(mockWorkerClient, USER_ID_3));
+        stubParticipants.add(mockCallForParticipant(mockWorkerClient, USER_ID_4));
+        
         BridgeHelper bridgeHelper = new BridgeHelper();
         bridgeHelper.setBridgeClientManager(mockClientManager);
-        bridgeHelper.setBridgeCredentials(TEST_SIGN_IN);
-
-        // execute
-        for (int i = 0; i < 3; i++) {
-            bridgeHelper.saveReportForStudy(TEST_STUDY_ID, TEST_REPORT_ID, TEST_REPORT);
+        
+        List<StudyParticipant> participants = bridgeHelper.getParticipantsForStudy(TEST_STUDY_ID, TEST_START_DATETIME,
+                TEST_END_DATETIME);
+        // All four participants are returned from two pages of records
+        assertEquals(participants.get(0), stubParticipants.get(0));
+        assertEquals(participants.get(1), stubParticipants.get(1));
+        assertEquals(participants.get(2), stubParticipants.get(2));
+        assertEquals(participants.get(3), stubParticipants.get(3));
+        
+        verify(mockWorkerClient).getParticipantsInStudy(TEST_STUDY_ID, null, 100, null, TEST_START_DATETIME,
+                TEST_END_DATETIME);
+        verify(mockWorkerClient).getParticipantsInStudy(TEST_STUDY_ID, 100, 100, null, TEST_START_DATETIME,
+                TEST_END_DATETIME);
+        verify(mockWorkerClient).getParticipantInStudy(TEST_STUDY_ID, USER_ID_1);
+        verify(mockWorkerClient).getParticipantInStudy(TEST_STUDY_ID, USER_ID_2);
+        verify(mockWorkerClient).getParticipantInStudy(TEST_STUDY_ID, USER_ID_3);
+        verify(mockWorkerClient).getParticipantInStudy(TEST_STUDY_ID, USER_ID_4);
+    }
+    
+    private StudyParticipant mockCallForParticipant(ForWorkersApi client, String userId) throws Exception {
+        StudyParticipant studyParticipant = new StudyParticipant();
+        Call<StudyParticipant> spCall = makeCall(studyParticipant);
+        when(client.getParticipantInStudy(TEST_STUDY_ID, userId)).thenReturn(spCall);
+        return studyParticipant;
+    }
+    
+    private <T> Call<T> makeCall(T object) throws IOException {
+        Response<T> response = Response.success(object);
+        Call<T> mockCall = mock(Call.class);
+        when(mockCall.execute()).thenReturn(response);
+        return mockCall;
+    }
+    
+    private Call<AccountSummaryList> createResponseForOffset(Long offsetBy, Long nextOffset, AccountSummary... summaries) throws IOException {
+        List<AccountSummary> page = new ArrayList<>();
+        AccountSummaryList list = new AccountSummaryList().items(page).offsetBy(nextOffset).pageSize(100)
+                .startDate(TEST_START_DATETIME).endDate(TEST_END_DATETIME);
+        for (AccountSummary summary : summaries) {
+            list.addItemsItem(summary);
         }
-
-        // Validate behind the scenes, in order.
-        InOrder inOrder = inOrder(mockReportCall1, mockReportCall2, mockReportCall3a, mockSignInCall,
-                mockReportCall3b);
-        inOrder.verify(mockReportCall1).execute();
-        inOrder.verify(mockReportCall2).execute();
-        inOrder.verify(mockReportCall3a).execute();
-        inOrder.verify(mockSignInCall).execute();
-        inOrder.verify(mockReportCall3b).execute();
+        Response<AccountSummaryList> response = Response.success(list);
+        
+        Call<AccountSummaryList> mockCall = mock(Call.class);
+        when(mockCall.execute()).thenReturn(response);
+        return mockCall;
     }
 }
