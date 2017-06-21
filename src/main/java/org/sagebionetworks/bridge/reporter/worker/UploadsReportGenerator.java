@@ -11,12 +11,14 @@ import java.util.stream.Collectors;
 import org.joda.time.DateTime;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
 
 import org.sagebionetworks.bridge.reporter.helper.BridgeHelper;
 import org.sagebionetworks.bridge.reporter.request.ReportType;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.Upload;
 
+@Component
 public class UploadsReportGenerator implements ReportGenerator {
     
     private BridgeHelper bridgeHelper;
