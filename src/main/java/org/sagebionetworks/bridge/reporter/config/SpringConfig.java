@@ -68,7 +68,7 @@ public class SpringConfig {
         return heartbeatLogger;
     }
     
-    @Bean
+    @Bean(name="generatorMap")
     public Map<ReportType, ReportGenerator> generatorMap(UploadsReportGenerator uploadsGenerator,
             SignUpsReportGenerator signupsGenerator) {
         return new ImmutableMap.Builder<ReportType, ReportGenerator>()
@@ -77,4 +77,5 @@ public class SpringConfig {
             .put(ReportType.DAILY_SIGNUPS, signupsGenerator)
             .build();
     }
+    
 }

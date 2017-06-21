@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import javax.annotation.Resource;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.base.Stopwatch;
 
@@ -38,7 +40,7 @@ public class BridgeReporterProcessor {
         this.bridgeHelper = bridgeHelper;
     }
     
-    @Autowired
+    @Resource(name="generatorMap")
     public final void setGeneratorMap(Map<ReportType, ReportGenerator> generatorMap) {
         this.generatorMap = generatorMap;
     }
