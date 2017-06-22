@@ -194,14 +194,14 @@ public class BridgeHelperTest {
         AccountSummary summary1 = new AccountSummary().id(USER_ID_1).email(USER_EMAIL_1);
         AccountSummary summary2 = new AccountSummary().id(USER_ID_2).email(USER_EMAIL_2);
         
-        Call<AccountSummaryList> mockCall1 = createResponseForOffset(0L, 100L, summary1, summary2);
-        when(mockWorkerClient.getParticipantsInStudy(TEST_STUDY_ID, null, 100, null, TEST_START_DATETIME,
+        Call<AccountSummaryList> mockCall1 = createResponseForOffset(0, summary1, summary2);
+        when(mockWorkerClient.getParticipantsInStudy(TEST_STUDY_ID, 0, 100, null, TEST_START_DATETIME,
                 TEST_END_DATETIME)).thenReturn(mockCall1);
 
         AccountSummary summary3 = new AccountSummary().id(USER_ID_3).email(USER_EMAIL_3);
         AccountSummary summary4 = new AccountSummary().id(USER_ID_4).email(USER_EMAIL_4);
         
-        Call<AccountSummaryList> mockCall2 = createResponseForOffset(100L, null, summary3, summary4);
+        Call<AccountSummaryList> mockCall2 = createResponseForOffset(100, summary3, summary4);
         when(mockWorkerClient.getParticipantsInStudy(TEST_STUDY_ID, 100, 100, null, TEST_START_DATETIME,
                 TEST_END_DATETIME)).thenReturn(mockCall2);
         
@@ -222,7 +222,7 @@ public class BridgeHelperTest {
         assertEquals(participants.get(2), stubParticipants.get(2));
         assertEquals(participants.get(3), stubParticipants.get(3));
         
-        verify(mockWorkerClient).getParticipantsInStudy(TEST_STUDY_ID, null, 100, null, TEST_START_DATETIME,
+        verify(mockWorkerClient).getParticipantsInStudy(TEST_STUDY_ID, 0, 100, null, TEST_START_DATETIME,
                 TEST_END_DATETIME);
         verify(mockWorkerClient).getParticipantsInStudy(TEST_STUDY_ID, 100, 100, null, TEST_START_DATETIME,
                 TEST_END_DATETIME);
@@ -246,10 +246,10 @@ public class BridgeHelperTest {
         return mockCall;
     }
     
-    private Call<AccountSummaryList> createResponseForOffset(Long offsetBy, Long nextOffset, AccountSummary... summaries) throws IOException {
+    private Call<AccountSummaryList> createResponseForOffset(int offsetBy, AccountSummary... summaries) throws IOException {
         List<AccountSummary> page = new ArrayList<>();
-        AccountSummaryList list = new AccountSummaryList().items(page).offsetBy(nextOffset).pageSize(100)
-                .startDate(TEST_START_DATETIME).endDate(TEST_END_DATETIME);
+        AccountSummaryList list = new AccountSummaryList().items(page).offsetBy(new Long(offsetBy)).pageSize(100)
+                .startDate(TEST_START_DATETIME).endDate(TEST_END_DATETIME).total(120);
         for (AccountSummary summary : summaries) {
             list.addItemsItem(summary);
         }
