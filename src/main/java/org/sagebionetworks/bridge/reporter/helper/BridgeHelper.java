@@ -80,19 +80,20 @@ public class BridgeHelper {
         
         ForWorkersApi workersApi = bridgeClientManager.getClient(ForWorkersApi.class);
         
-        Long offset = null;
+        int offset = 0;
+        int total = 0;
         do {
-            Integer asInteger = (offset == null) ? null : offset.intValue();
             AccountSummaryList summaries = workersApi
-                    .getParticipantsInStudy(studyId, asInteger, PARTICIPANT_PAGE_SIZE, null, startDateTime, endDateTime)
+                    .getParticipantsInStudy(studyId, offset, PARTICIPANT_PAGE_SIZE, null, startDateTime, endDateTime)
                     .execute().body();
             for (AccountSummary summary : summaries.getItems()) {
                 StudyParticipant participant = workersApi.getParticipantInStudy(studyId, summary.getId()).execute().body();
                 retList.add(participant);
                 doSleep();
             }
-            offset = summaries.getOffsetBy();
-        } while(offset != null);
+            total = summaries.getTotal();
+            offset += PARTICIPANT_PAGE_SIZE;
+        } while(offset < total);
         
         return retList;
     }
