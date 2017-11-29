@@ -16,9 +16,9 @@ import java.util.Map;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
 
 import org.joda.time.DateTime;
+import org.joda.time.LocalDate;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 import retrofit2.Call;
@@ -34,6 +34,7 @@ import org.sagebionetworks.bridge.rest.model.AccountSummary;
 import org.sagebionetworks.bridge.rest.model.AccountSummaryList;
 import org.sagebionetworks.bridge.rest.model.Message;
 import org.sagebionetworks.bridge.rest.model.ReportData;
+import org.sagebionetworks.bridge.rest.model.RequestParams;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyList;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
@@ -63,7 +64,7 @@ public class BridgeHelperTest {
     private static final DateTime TEST_END_DATETIME = new DateTime();
 
     private static final Map<String, String> TEST_REPORT_DATA = ImmutableMap.of("field1", "test");
-    private static final ReportData TEST_REPORT = new ReportData().date(TEST_START_DATETIME.toLocalDate())
+    private static final ReportData TEST_REPORT = new ReportData().date(TEST_START_DATETIME.toLocalDate().toString())
             .data(TEST_REPORT_DATA);
 
     private static final Study TEST_STUDY_SUMMARY = new Study().identifier(TEST_STUDY_ID).name(TEST_STUDY_ID);
@@ -127,7 +128,7 @@ public class BridgeHelperTest {
     public void testGetUploadsForStudyPaginated() throws Exception {
         // mock SDK get uploads call
         UploadList uploadList = new UploadList().addItemsItem(testUpload);
-        uploadList.setOffsetKey("offsetKey");
+        uploadList.setNextPageOffsetKey("offsetKey");
         Response<UploadList> response = Response.success(uploadList);
         UploadList secondUploadList = new UploadList().addItemsItem(testUpload);
         Response<UploadList> secondResponse = Response.success(secondUploadList);
@@ -167,7 +168,7 @@ public class BridgeHelperTest {
         // mock SDK save report call
         Call<Message> mockCall = mock(Call.class);
         ForWorkersApi mockWorkerClient = mock(ForWorkersApi.class);
-        when(mockWorkerClient.saveReportForStudy(TEST_STUDY_ID, TEST_REPORT_ID, TEST_REPORT)).thenReturn(mockCall);
+        when(mockWorkerClient.saveReportForWorker(TEST_STUDY_ID, TEST_REPORT_ID, TEST_REPORT)).thenReturn(mockCall);
 
         ClientManager mockClientManager = mock(ClientManager.class);
         when(mockClientManager.getClient(ForWorkersApi.class)).thenReturn(mockWorkerClient);
@@ -177,7 +178,7 @@ public class BridgeHelperTest {
         bridgeHelper.setBridgeClientManager(mockClientManager);
         
         Report report = new Report.Builder().withStudyId(TEST_STUDY_ID)
-                .withReportId(TEST_REPORT_ID).withDate(TEST_REPORT.getDate())
+                .withReportId(TEST_REPORT_ID).withDate(LocalDate.parse(TEST_REPORT.getDate()))
                 .withReportData(TEST_REPORT.getData()).build();
 
         bridgeHelper.saveReportForStudy(report);
@@ -248,8 +249,13 @@ public class BridgeHelperTest {
     
     private Call<AccountSummaryList> createResponseForOffset(int offsetBy, AccountSummary... summaries) throws IOException {
         List<AccountSummary> page = new ArrayList<>();
-        AccountSummaryList list = new AccountSummaryList().items(page).offsetBy(new Long(offsetBy)).pageSize(100)
-                .startDate(TEST_START_DATETIME).endDate(TEST_END_DATETIME).total(120);
+        RequestParams requestParams = new RequestParams().offsetBy(offsetBy).pageSize(100)
+                .startTime(TEST_START_DATETIME).endTime(TEST_END_DATETIME);
+        AccountSummaryList list = new AccountSummaryList();
+        list.setItems(page);
+        list.setRequestParams(requestParams);
+        list.setTotal(120);
+
         for (AccountSummary summary : summaries) {
             list.addItemsItem(summary);
         }

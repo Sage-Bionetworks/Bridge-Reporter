@@ -67,7 +67,7 @@ public class BridgeHelper {
                     .getUploadsInStudy(studyId, startDateTime, endDateTime, MAX_PAGE_SIZE, temOffsetKey).execute()
                     .body();
             retList.addAll(retBody.getItems());
-            offsetKey = retBody.getOffsetKey();
+            offsetKey = retBody.getNextPageOffsetKey();
             doSleep();
         } while (offsetKey != null);
 
@@ -111,9 +111,9 @@ public class BridgeHelper {
      * Helper method to save report for specified study with report id and report data
      */
     public void saveReportForStudy(Report report) throws IOException {
-        ReportData reportData = new ReportData().date(report.getDate()).data(report.getData());
+        ReportData reportData = new ReportData().date(report.getDate().toString()).data(report.getData());
         bridgeClientManager.getClient(ForWorkersApi.class)
-                .saveReportForStudy(report.getStudyId(), report.getReportId(), reportData).execute();
+                .saveReportForWorker(report.getStudyId(), report.getReportId(), reportData).execute();
     }
 
 }
