@@ -48,14 +48,14 @@ public class BridgeReporterProcessorTest {
     
     private static final Map<String, Integer> TEST_REPORT_DATA = ImmutableMap.of("succeeded", 1);
     private static final Map<String, Integer> TEST_REPORT_DATA_WEEKLY = ImmutableMap.of("succeeded", 1);
-    private static final ReportData TEST_REPORT = new ReportData().date(TEST_START_DATETIME.toLocalDate()).data(
+    private static final ReportData TEST_REPORT = new ReportData().date(TEST_START_DATETIME.toLocalDate().toString()).data(
             TEST_REPORT_DATA);
-    private static final ReportData TEST_REPORT_WEEKLY = new ReportData().date(TEST_START_DATETIME.toLocalDate()).data(
+    private static final ReportData TEST_REPORT_WEEKLY = new ReportData().date(TEST_START_DATETIME.toLocalDate().toString()).data(
             TEST_REPORT_DATA_WEEKLY);
 
     private static final Map<String, Integer> TEST_REPORT_DATA_2 = ImmutableMap.<String, Integer>builder()
             .put("succeeded", 2).put("requested", 1).build();
-    private static final ReportData TEST_REPORT_2 = new ReportData().date(TEST_START_DATETIME.toLocalDate()).data(
+    private static final ReportData TEST_REPORT_2 = new ReportData().date(TEST_START_DATETIME.toLocalDate().toString()).data(
             TEST_REPORT_DATA_2);
     
     private static final Study TEST_STUDY_SUMMARY = new Study().identifier(TEST_STUDY_ID).name(TEST_STUDY_ID);
