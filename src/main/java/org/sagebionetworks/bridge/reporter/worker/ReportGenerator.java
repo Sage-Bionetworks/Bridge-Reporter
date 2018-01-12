@@ -2,10 +2,8 @@ package org.sagebionetworks.bridge.reporter.worker;
 
 import java.io.IOException;
 
-import org.sagebionetworks.bridge.rest.model.Study;
-
+/** Generic interface for a report generator. */
 public interface ReportGenerator {
-
-    public Report generate(BridgeReporterRequest request, Study study) throws IOException;
-    
+    /** Generates a report based on the reporter request and study. */
+    Report generate(BridgeReporterRequest request, String studyId) throws IOException;
 }

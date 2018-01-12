@@ -14,7 +14,6 @@ import org.sagebionetworks.bridge.reporter.helper.BridgeHelper;
 import org.sagebionetworks.bridge.reporter.request.ReportType;
 import org.sagebionetworks.bridge.rest.model.AccountStatus;
 import org.sagebionetworks.bridge.rest.model.SharingScope;
-import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 
 import com.google.common.collect.HashMultiset;
@@ -36,14 +35,13 @@ public class SignUpsReportGenerator implements ReportGenerator {
     }
     
     @Override
-    public Report generate(BridgeReporterRequest request, Study study) throws IOException {
+    public Report generate(BridgeReporterRequest request, String studyId) throws IOException {
         DateTime startDate = request.getStartDateTime();
         DateTime endDate = request.getEndDateTime();
         String scheduler = request.getScheduler();
         ReportType scheduleType = request.getScheduleType();
 
         String reportId = scheduler + scheduleType.getSuffix();
-        String studyId = study.getIdentifier();
 
         Multiset<AccountStatus> statuses = HashMultiset.create();
         Multiset<SharingScope> sharingScopes = HashMultiset.create();

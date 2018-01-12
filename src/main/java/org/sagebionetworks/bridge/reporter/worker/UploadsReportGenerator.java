@@ -15,7 +15,6 @@ import org.springframework.stereotype.Component;
 
 import org.sagebionetworks.bridge.reporter.helper.BridgeHelper;
 import org.sagebionetworks.bridge.reporter.request.ReportType;
-import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.Upload;
 
 @Component
@@ -30,7 +29,7 @@ public class UploadsReportGenerator implements ReportGenerator {
     }
 
     @Override
-    public Report generate(BridgeReporterRequest request, Study study) throws IOException {
+    public Report generate(BridgeReporterRequest request, String studyId) throws IOException {
         DateTime startDateTime = request.getStartDateTime();
         DateTime endDateTime = request.getEndDateTime();
         String scheduler = request.getScheduler();
@@ -39,7 +38,6 @@ public class UploadsReportGenerator implements ReportGenerator {
         String reportId = scheduler + scheduleType.getSuffix();
         
         Map<String, Integer> data = new HashMap<>();
-        String studyId = study.getIdentifier();
 
         // get all uploads for this studyid
         List<Upload> uploadsForStudy = bridgeHelper.getUploadsForStudy(studyId, startDateTime, endDateTime);

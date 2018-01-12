@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
 
@@ -61,9 +62,18 @@ public class BridgeReporterProcessor {
 
         Stopwatch requestStopwatch = Stopwatch.createStarted();
         try {
-            List<Study> studySummaries = bridgeHelper.getAllStudiesSummary();
-            for (Study study : studySummaries) {
-                Report report = generator.generate(request, study);
+            List<String> studyIdList;
+            if (!request.getStudyWhitelist().isEmpty()) {
+                // Use study whitelist as list of study IDs.
+                studyIdList = request.getStudyWhitelist();
+            } else {
+                // Otherwise, call Bridge server to get a list of studies.
+                List<Study> studySummaries = bridgeHelper.getAllStudiesSummary();
+                studyIdList = studySummaries.stream().map(Study::getIdentifier).collect(Collectors.toList());
+            }
+
+            for (String studyId : studyIdList) {
+                Report report = generator.generate(request, studyId);
                 
                 bridgeHelper.saveReportForStudy(report);
                 
