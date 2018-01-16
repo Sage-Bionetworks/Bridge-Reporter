@@ -14,11 +14,8 @@ import org.testng.annotations.Test;
 
 import org.sagebionetworks.bridge.reporter.helper.BridgeHelper;
 import org.sagebionetworks.bridge.reporter.request.ReportType;
-import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.Upload;
 import org.sagebionetworks.bridge.rest.model.UploadStatus;
-
-import com.google.common.collect.Lists;
 
 public class UploadsReportGeneratorTest {
     
@@ -36,10 +33,6 @@ public class UploadsReportGeneratorTest {
                 .withEndDateTime(END_DATE).build();
         BridgeHelper bridgeHelper = mock(BridgeHelper.class);
 
-        Study study = mock(Study.class);
-        when(study.getIdentifier()).thenReturn(STUDY_ID);
-        when(bridgeHelper.getAllStudiesSummary()).thenReturn(Lists.newArrayList(study));
-        
         List<Upload> uploads = new ArrayList<>();
         uploads.add(new Upload().recordId("record1").status(UploadStatus.SUCCEEDED));
         uploads.add(new Upload().recordId("record2").status(UploadStatus.REQUESTED));
@@ -47,7 +40,7 @@ public class UploadsReportGeneratorTest {
         
         UploadsReportGenerator generator = new UploadsReportGenerator();
         generator.setBridgeHelper(bridgeHelper);
-        Report report = generator.generate(request, study);
+        Report report = generator.generate(request, STUDY_ID);
         
         assertEquals(report.getStudyId(), STUDY_ID);
         assertEquals(report.getReportId(), "test-scheduler-daily-signups-report");

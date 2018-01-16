@@ -17,10 +17,7 @@ import org.sagebionetworks.bridge.reporter.helper.BridgeHelper;
 import org.sagebionetworks.bridge.reporter.request.ReportType;
 import org.sagebionetworks.bridge.rest.model.AccountStatus;
 import org.sagebionetworks.bridge.rest.model.SharingScope;
-import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
-
-import com.google.common.collect.Lists;
 
 public class SignUpsReportGeneratorTest {
     
@@ -38,10 +35,6 @@ public class SignUpsReportGeneratorTest {
                 .withEndDateTime(END_DATE).build();
         BridgeHelper bridgeHelper = mock(BridgeHelper.class);
 
-        Study study = mock(Study.class);
-        when(study.getIdentifier()).thenReturn(STUDY_ID);
-        when(bridgeHelper.getAllStudiesSummary()).thenReturn(Lists.newArrayList(study));
-        
         List<StudyParticipant> participants = new ArrayList<>();
         participants.add((StudyParticipant) new StudyParticipant().status(AccountStatus.ENABLED)
                 .sharingScope(SharingScope.NO_SHARING));
@@ -51,7 +44,7 @@ public class SignUpsReportGeneratorTest {
         
         SignUpsReportGenerator generator = new SignUpsReportGenerator();
         generator.setBridgeHelper(bridgeHelper);
-        Report report = generator.generate(request, study);
+        Report report = generator.generate(request, STUDY_ID);
         
         assertEquals(report.getStudyId(), STUDY_ID);
         assertEquals(report.getReportId(), "test-scheduler-daily-signups-report");
@@ -75,10 +68,6 @@ public class SignUpsReportGeneratorTest {
                 .withEndDateTime(END_DATE).build();
         BridgeHelper bridgeHelper = mock(BridgeHelper.class);
 
-        Study study = mock(Study.class);
-        when(study.getIdentifier()).thenReturn(STUDY_ID);
-        when(bridgeHelper.getAllStudiesSummary()).thenReturn(Lists.newArrayList(study));
-        
         List<StudyParticipant> participants = new ArrayList<>();
         participants.add((StudyParticipant) new StudyParticipant().status(AccountStatus.ENABLED)
                 .sharingScope(SharingScope.NO_SHARING));
@@ -92,7 +81,7 @@ public class SignUpsReportGeneratorTest {
         
         SignUpsReportGenerator generator = new SignUpsReportGenerator();
         generator.setBridgeHelper(bridgeHelper);
-        Report report = generator.generate(request, study);
+        Report report = generator.generate(request, STUDY_ID);
         
         assertEquals(report.getStudyId(), STUDY_ID);
         assertEquals(report.getReportId(), "test-scheduler-daily-signups-report");
