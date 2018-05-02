@@ -109,7 +109,7 @@ public class BridgeHelperTest {
         when(mockCall.execute()).thenReturn(response);
 
         ForWorkersApi mockWorkerClient = mock(ForWorkersApi.class);
-        when(mockWorkerClient.getUploadsInStudy(TEST_STUDY_ID, TEST_START_DATETIME, TEST_END_DATETIME, MAX_PAGE_SIZE, null)).thenReturn(
+        when(mockWorkerClient.getUploads(TEST_STUDY_ID, TEST_START_DATETIME, TEST_END_DATETIME, MAX_PAGE_SIZE, null)).thenReturn(
                 mockCall);
 
         ClientManager mockClientManager = mock(ClientManager.class);
@@ -140,9 +140,9 @@ public class BridgeHelperTest {
         when(secondMockCall.execute()).thenReturn(secondResponse);
 
         ForWorkersApi mockWorkerClient = mock(ForWorkersApi.class);
-        when(mockWorkerClient.getUploadsInStudy(TEST_STUDY_ID, TEST_START_DATETIME, TEST_END_DATETIME, MAX_PAGE_SIZE, null)).thenReturn(
+        when(mockWorkerClient.getUploads(TEST_STUDY_ID, TEST_START_DATETIME, TEST_END_DATETIME, MAX_PAGE_SIZE, null)).thenReturn(
                 mockCall);
-        when(mockWorkerClient.getUploadsInStudy(TEST_STUDY_ID, TEST_START_DATETIME, TEST_END_DATETIME, MAX_PAGE_SIZE, "offsetKey")).thenReturn(
+        when(mockWorkerClient.getUploads(TEST_STUDY_ID, TEST_START_DATETIME, TEST_END_DATETIME, MAX_PAGE_SIZE, "offsetKey")).thenReturn(
                 secondMockCall);
 
         ClientManager mockClientManager = mock(ClientManager.class);
@@ -158,7 +158,7 @@ public class BridgeHelperTest {
 
         // verify
         // called twice
-        verify(mockWorkerClient, times(2)).getUploadsInStudy(any(), any(), any(), any(), any());
+        verify(mockWorkerClient, times(2)).getUploads(any(), any(), any(), any(), any());
         // contain 2 test uploads
         assertEquals(retUploadsForStudy, ImmutableList.of(testUpload, testUpload));
     }
@@ -168,7 +168,7 @@ public class BridgeHelperTest {
         // mock SDK save report call
         Call<Message> mockCall = mock(Call.class);
         ForWorkersApi mockWorkerClient = mock(ForWorkersApi.class);
-        when(mockWorkerClient.saveReportForWorker(TEST_STUDY_ID, TEST_REPORT_ID, TEST_REPORT)).thenReturn(mockCall);
+        when(mockWorkerClient.saveReport(TEST_STUDY_ID, TEST_REPORT_ID, TEST_REPORT)).thenReturn(mockCall);
 
         ClientManager mockClientManager = mock(ClientManager.class);
         when(mockClientManager.getClient(ForWorkersApi.class)).thenReturn(mockWorkerClient);
@@ -196,14 +196,14 @@ public class BridgeHelperTest {
         AccountSummary summary2 = new AccountSummary().id(USER_ID_2).email(USER_EMAIL_2);
         
         Call<AccountSummaryList> mockCall1 = createResponseForOffset(0, summary1, summary2);
-        when(mockWorkerClient.getParticipantsInStudy(TEST_STUDY_ID, 0, 100, null, TEST_START_DATETIME,
+        when(mockWorkerClient.getParticipants(TEST_STUDY_ID, 0, 100, null, null, TEST_START_DATETIME,
                 TEST_END_DATETIME)).thenReturn(mockCall1);
 
         AccountSummary summary3 = new AccountSummary().id(USER_ID_3).email(USER_EMAIL_3);
         AccountSummary summary4 = new AccountSummary().id(USER_ID_4).email(USER_EMAIL_4);
         
         Call<AccountSummaryList> mockCall2 = createResponseForOffset(100, summary3, summary4);
-        when(mockWorkerClient.getParticipantsInStudy(TEST_STUDY_ID, 100, 100, null, TEST_START_DATETIME,
+        when(mockWorkerClient.getParticipants(TEST_STUDY_ID, 100, 100, null, null, TEST_START_DATETIME,
                 TEST_END_DATETIME)).thenReturn(mockCall2);
         
         List<StudyParticipant> stubParticipants = newArrayList();
@@ -223,20 +223,20 @@ public class BridgeHelperTest {
         assertEquals(participants.get(2), stubParticipants.get(2));
         assertEquals(participants.get(3), stubParticipants.get(3));
         
-        verify(mockWorkerClient).getParticipantsInStudy(TEST_STUDY_ID, 0, 100, null, TEST_START_DATETIME,
+        verify(mockWorkerClient).getParticipants(TEST_STUDY_ID, 0, 100, null, null, TEST_START_DATETIME,
                 TEST_END_DATETIME);
-        verify(mockWorkerClient).getParticipantsInStudy(TEST_STUDY_ID, 100, 100, null, TEST_START_DATETIME,
+        verify(mockWorkerClient).getParticipants(TEST_STUDY_ID, 100, 100, null, null, TEST_START_DATETIME,
                 TEST_END_DATETIME);
-        verify(mockWorkerClient).getParticipantInStudy(TEST_STUDY_ID, USER_ID_1);
-        verify(mockWorkerClient).getParticipantInStudy(TEST_STUDY_ID, USER_ID_2);
-        verify(mockWorkerClient).getParticipantInStudy(TEST_STUDY_ID, USER_ID_3);
-        verify(mockWorkerClient).getParticipantInStudy(TEST_STUDY_ID, USER_ID_4);
+        verify(mockWorkerClient).getParticipantById(TEST_STUDY_ID, USER_ID_1, false);
+        verify(mockWorkerClient).getParticipantById(TEST_STUDY_ID, USER_ID_2, false);
+        verify(mockWorkerClient).getParticipantById(TEST_STUDY_ID, USER_ID_3, false);
+        verify(mockWorkerClient).getParticipantById(TEST_STUDY_ID, USER_ID_4, false);
     }
     
     private StudyParticipant mockCallForParticipant(ForWorkersApi client, String userId) throws Exception {
         StudyParticipant studyParticipant = new StudyParticipant();
         Call<StudyParticipant> spCall = makeCall(studyParticipant);
-        when(client.getParticipantInStudy(TEST_STUDY_ID, userId)).thenReturn(spCall);
+        when(client.getParticipantById(TEST_STUDY_ID, userId, false)).thenReturn(spCall);
         return studyParticipant;
     }
     

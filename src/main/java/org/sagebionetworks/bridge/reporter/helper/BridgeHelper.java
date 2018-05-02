@@ -64,7 +64,7 @@ public class BridgeHelper {
             
             final String temOffsetKey = offsetKey;
             UploadList retBody = workersApi
-                    .getUploadsInStudy(studyId, startDateTime, endDateTime, MAX_PAGE_SIZE, temOffsetKey).execute()
+                    .getUploads(studyId, startDateTime, endDateTime, MAX_PAGE_SIZE, temOffsetKey).execute()
                     .body();
             retList.addAll(retBody.getItems());
             offsetKey = retBody.getNextPageOffsetKey();
@@ -81,13 +81,13 @@ public class BridgeHelper {
         ForWorkersApi workersApi = bridgeClientManager.getClient(ForWorkersApi.class);
         
         int offset = 0;
-        int total = 0;
+        int total;
         do {
             AccountSummaryList summaries = workersApi
-                    .getParticipantsInStudy(studyId, offset, PARTICIPANT_PAGE_SIZE, null, startDateTime, endDateTime)
+                    .getParticipants(studyId, offset, PARTICIPANT_PAGE_SIZE, null, null, startDateTime, endDateTime)
                     .execute().body();
             for (AccountSummary summary : summaries.getItems()) {
-                StudyParticipant participant = workersApi.getParticipantInStudy(studyId, summary.getId()).execute().body();
+                StudyParticipant participant = workersApi.getParticipantById(studyId, summary.getId(), false).execute().body();
                 retList.add(participant);
                 doSleep();
             }
@@ -113,7 +113,7 @@ public class BridgeHelper {
     public void saveReportForStudy(Report report) throws IOException {
         ReportData reportData = new ReportData().date(report.getDate().toString()).data(report.getData());
         bridgeClientManager.getClient(ForWorkersApi.class)
-                .saveReportForWorker(report.getStudyId(), report.getReportId(), reportData).execute();
+                .saveReport(report.getStudyId(), report.getReportId(), reportData).execute();
     }
 
 }
